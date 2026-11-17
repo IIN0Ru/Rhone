@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>로운 — 파티원 고용 RPG 프로토타입</title>
+<style>
+@font-face{font-family:G11;src:url(Galmuri11.woff2) format('woff2')}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0d0a0c;color:#3a1a0a;font-family:G11,monospace;-webkit-font-smoothing:none;overflow:hidden}
+img,canvas{image-rendering:pixelated;image-rendering:crisp-edges}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#stage{position:relative;width:960px;height:600px;flex:none;transform-origin:center;overflow:hidden;background:#000}
+#cv{position:absolute;inset:0;width:960px;height:600px}
+.hidden{display:none!important}
+.wood{background:#e3a35c;border:4px solid #5a2a12;box-shadow:inset 0 0 0 4px #b8642a,inset 0 0 0 8px #f2c47a,6px 6px 0 rgba(0,0,0,.35);color:#3a1a0a}
+.paper{background:#f6d9a0;box-shadow:inset 0 0 0 3px #b8642a}
+button{font-family:G11,monospace;font-size:20px;cursor:pointer;color:#3a1a0a;background:#f6d9a0;border:0;box-shadow:inset 0 0 0 3px #b8642a;padding:8px 14px}
+button:hover:not(:disabled){box-shadow:inset 0 0 0 3px #e2402e;background:#fbe6b8}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.big{font-size:24px;padding:12px 26px;background:#f2c47a;box-shadow:inset 0 0 0 4px #5a2a12,inset 0 -6px 0 4px #b8642a}
+button.sel{box-shadow:inset 0 0 0 4px #e2402e;background:#fbe6b8}
+.dim{opacity:.72}
+.ic{width:28px;height:28px;vertical-align:middle}
+/* HUD */
+#hud .clock{position:absolute;right:12px;top:12px;width:236px;padding:12px 14px;text-align:center;z-index:2}
+#hud .clock .d{font-size:24px}#hud .clock .t{font-size:16px;margin:2px 0 8px}
+#hud .clock .g{background:#3a1a0a;color:#f2d47a;font-size:26px;padding:3px 10px;display:flex;justify-content:flex-end;align-items:center;gap:6px;box-shadow:inset 0 0 0 3px #7a3a14}
+#hud .clock .x{font-size:15px;margin-top:6px}
+#hud .pty{position:absolute;left:12px;top:12px;display:flex;gap:8px;z-index:2}
+#hud .pp{width:86px;padding:7px;text-align:center;cursor:pointer}
+#hud .pp img.p{width:60px;height:60px;display:block;margin:0 auto;background:#f6d9a0;box-shadow:inset 0 0 0 3px #b8642a}
+#hud .pp .n{font-size:16px;margin-top:2px;white-space:nowrap;overflow:hidden}
+#hud .pp .h{line-height:0;margin-top:3px}#hud .pp .h img{width:18px;height:18px}
+#hud .pp.low{animation:blink 1s steps(2) infinite}@keyframes blink{50%{background:#e2a090}}
+#hud .hot{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:flex;gap:4px;padding:8px;z-index:2}
+#hud .slot{width:62px;height:62px;position:relative;display:flex;align-items:center;justify-content:center;padding:0;font-size:15px;flex-direction:column}
+#hud .slot img{width:40px;height:40px}
+#hud .slot b{position:absolute;right:4px;bottom:1px;font-size:17px;color:#fff;text-shadow:2px 2px 0 #3a1a0a;font-weight:400}
+#hud .slot s{position:absolute;left:4px;top:1px;font-size:13px;text-decoration:none;color:#7a3a14}
+#hud.dun .hot{left:auto;right:12px;transform:none}
+#toasts{position:absolute;left:12px;top:168px;display:flex;flex-direction:column;gap:6px;z-index:2;max-width:320px;pointer-events:none}
+#toasts div{font-size:15px;padding:7px 11px;line-height:1.35;animation:tin .25s steps(3)}
+@keyframes tin{from{transform:translateX(-30px);opacity:0}}
+/* 전투 */
+#bcmd{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);white-space:nowrap;display:flex;gap:14px;align-items:center;padding:10px 16px;z-index:3;font-size:17px}
+#bcmd label{display:flex;align-items:center;gap:6px;font-size:16px}
+#bcmd input{width:20px;height:20px;accent-color:#b8642a}
+/* 대화창 */
+#modal{position:absolute;inset:0;z-index:20;background:rgba(10,6,8,.22)}
+#modalIn{position:absolute;left:28px;right:28px;bottom:14px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+#mch{padding:10px 12px;min-width:380px;max-width:640px;display:flex;flex-direction:column;gap:2px}
+#mch button{text-align:left;background:transparent;box-shadow:none;font-size:22px;padding:6px 12px 6px 34px;position:relative}
+#mch button.on{background:#f6d9a0;box-shadow:inset 0 0 0 3px #e2402e}
+#mch button.on::before{content:'▶';position:absolute;left:10px;color:#e2402e}
+#mch button:disabled{opacity:.4}
+#mch small{font-size:16px;opacity:.75;margin-left:8px}
+.dlg{width:100%;display:flex;padding:20px 22px;min-height:190px;max-height:330px}
+.dlg .tx{flex:1;font-size:21px;line-height:1.5;overflow:auto;padding-right:14px}
+.dlg .tx p{margin:0 0 8px}.dlg .tx h3{margin:0 0 8px;font-size:26px;font-weight:400;color:#7a2a12}
+.dlg .tx b{color:#7a2a12;font-weight:400;text-decoration:underline}
+.dlg .pf{width:186px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:4px solid #b8642a;padding-left:16px}
+.dlg .pf img{width:150px;height:150px;background:#f6d9a0;box-shadow:inset 0 0 0 4px #b8642a}
+.dlg .pf .nm{margin-top:6px;padding:3px 16px;font-size:20px}
+.dlg .talkline{font-size:22px}
+/* 메뉴 */
+#menu{position:absolute;left:70px;right:70px;top:76px;bottom:28px;padding:20px 26px;z-index:15;display:flex;flex-direction:column}
+#menu .tabs{position:absolute;top:-56px;left:24px;display:flex;gap:6px}
+#menu .tabs button{width:86px;height:56px;padding:0;font-size:18px;box-shadow:inset 0 0 0 4px #5a2a12,inset 0 0 0 8px #f2c47a;background:#e3a35c}
+#menu .tabs button.on{transform:translateY(8px);background:#f2c47a}
+#menu .close{position:absolute;right:10px;top:10px;padding:4px 12px}
+#menu h2{margin:0 0 10px;font-size:26px;font-weight:400}
+#menu .body{flex:1;overflow:auto;padding-right:6px}
+.row{display:flex;align-items:center;gap:14px;padding:10px;margin-bottom:8px}
+.row img.p{width:72px;height:72px;background:#e3a35c;flex:none}
+.row .hearts img{width:20px;height:20px;margin-right:1px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.chip{font-size:14px;padding:1px 7px;background:#e3a35c;box-shadow:inset 0 0 0 2px #b8642a;cursor:help}
+.chip.h{opacity:.6}.chip.new{background:#f2d47a;box-shadow:inset 0 0 0 2px #e2402e}
+.jl div{font-size:17px;padding:6px 4px;border-bottom:2px dashed #c8884a}
+/* 인트로·엔딩 */
+#screen{position:absolute;inset:0;z-index:25;display:flex;align-items:center;justify-content:center;background:rgba(20,10,14,.35)}
+.intro,.ending{width:620px;max-height:560px;overflow:auto;padding:26px 30px;text-align:center}
+.intro h1,.ending h1{font-size:64px;font-weight:400;margin:0;color:#7a2a12;text-shadow:4px 4px 0 #f2c47a}
+.intro p,.ending p{font-size:18px;line-height:1.6;margin:8px 0}
+.intro input{font-family:G11;font-size:20px;padding:6px 10px;border:0;background:#f6d9a0;box-shadow:inset 0 0 0 3px #b8642a;width:150px;margin-left:8px;color:#3a1a0a}
+.jobs{display:flex;gap:12px;justify-content:center;margin:12px 0}
+.jobs button{min-width:180px}.jobs small{display:block;font-size:14px;opacity:.75}
+.ending ul{list-style:none;padding:0;margin:10px auto;text-align:left;font-size:18px}.ending li{padding:5px 0;border-bottom:2px dashed #c8884a}
+/* 터치 */
+#touch{position:absolute;inset:0;z-index:4;pointer-events:none;display:none}
+#touch .tb{pointer-events:auto;position:absolute;bottom:16px;width:86px;height:86px;font-size:30px;padding:0;background:#e3a35c;box-shadow:inset 0 0 0 4px #5a2a12,inset 0 0 0 8px #f2c47a;opacity:.92;touch-action:none;user-select:none;-webkit-user-select:none}
+@media (hover:none){#touch{display:block}#hud .hot{left:auto;right:12px;transform:none;bottom:120px}}
+#rot{position:fixed;left:0;right:0;top:0;padding:10px;text-align:center;background:#f2c14e;color:#2a1a1f;font-size:15px;display:none;z-index:99}
+@media (orientation:portrait) and (hover:none){#rot{display:block}}
+</style>
+</head>
+<body>
+<div id="rot">폰을 가로로 돌려줘 — 게임은 가로 화면 전용이야</div>
+<div id="wrap"><div id="stage">
+  <canvas id="cv" width="960" height="600"></canvas>
+  <div id="hud"></div><div id="toasts"></div>
+  <div id="bcmd" class="hidden wood"></div>
+  <div id="touch"><button class="tb" data-hold="left" style="left:16px">◀</button><button class="tb" data-hold="right" style="left:116px">▶</button><button class="tb" data-tap="use" style="right:16px;font-size:20px">대화</button></div>
+  <div id="menu" class="hidden wood"></div>
+  <div id="screen" class="hidden"></div>
+  <div id="modal" class="hidden"><div id="modalIn"><div id="mch" class="wood"></div><div class="dlg wood" id="modalBox"></div></div></div>
+</div></div>
+<script src="art9.js"></script>
+<script src="ui7.js"></script>
+<script>
+// ================= 유틸 =================
+const $ = s => document.querySelector(s);
+const R = () => Math.random();
+const ri = (a, b) => a + Math.floor(R() * (b - a + 1));
+const pick = a => a[Math.floor(R() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const jong = s => { const c = s.charCodeAt(s.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0; };
+const j = (s, a, b) => s + (jong(s) ? a : b);
+let uidc = 0; const uid = () => 'e' + (++uidc);
+
+// ================= 게임 데이터 =================
+const DEADLINE = 360;
+const LODGING = [
+  {name: '마구간', icon: '🐴', cost: 0, heal: 0.3, desc: '공짜. HP 회복이 느리고, 동료들 불만이 쌓인다.'},
+  {name: '여관 일반실', icon: '🛏️', cost: 12, heal: 0.6, desc: '무난하다. 동료 기분이 조금 좋아진다.'},
+  {name: '여관 고급실', icon: '🛌', cost: 30, heal: 1, desc: '하루면 완전 회복. 동료 호감도가 꾸준히 오른다.'}
+];
+const NOLODGE = {name: '숙소 없음', icon: '🌙', cost: 0, heal: 0.15, desc: '노숙. 회복이 거의 안 되고 모두 불만이 쌓인다.'};
+const lodg = () => G.lodging < 0 ? NOLODGE : LODGING[G.lodging];
+const TEMPLATES = {
+  yujin: {name: '유진', icon: '👩‍🦰', job: '검사', lvl: 2, bhp: 38, batk: 8, bdef: 3, rate: 0, aff: 70,
+    traits: [['의리', '처음부터 호감도가 높다', 1], ['촌놈', '도시 상인에게 바가지를 쓴다', 0], ['질투', '다른 동료만 챙기면 서운해한다', 0]],
+    lines: {atk: ['같이 가자!', '내가 맡을게!', '우리 동네 힘 좀 봐라!'], hesit: ['잠깐… 무서워', '이건 아닌 것 같아'], flee: ['나 먼저 갈게!'],
+      idle: ['도시 사람들은 다 바빠 보여', '배고프다…', '우리 진짜 성공할 수 있겠지?', '저 가게 예쁘다!']}},
+  bark: {name: '바르크', icon: '🧔', job: '드워프 전사', lvl: 4, bhp: 52, batk: 10, bdef: 5, rate: 15, aff: 35,
+    traits: [['노련함', '명령을 잘 따른다', 1], ['술꾼', '숙소가 나쁘면 술을 찾고, 전투 중 비틀거린다', 0], ['돈 계산', '금고가 비면 떠난다', 0]],
+    pitch: '"한 달에 15골드. 술값은 따로다."',
+    lines: {atk: ['흐읍!', '망치 맛 좀 봐라', '늙었다고 무시하지 마라'], hesit: ['딸꾹…', '그 명령은 수지가 안 맞아'], flee: ['이 값에 목숨 못 건다!'],
+      idle: ['술집 냄새가 나는군', '엘프 놈들은 믿지 마라', '다리가 쑤시는구먼'],
+      bar: ['한 잔 더!', '여기 맥주 두 잔!', '내가 젊었을 땐 말이야…']}},
+  yeon: {name: '연소하', icon: '🥷', job: '검객', lvl: 6, bhp: 48, batk: 15, bdef: 3, rate: 30, aff: 30,
+    traits: [['고수', '강하다', 1], ['원수', '던전에서 자객이 따라온다', 0], ['자존심', '허름한 숙소를 견디지 못한다', 0]],
+    pitch: '"…한 달에 30. 싸구려 방이면 사양하지."',
+    lines: {atk: ['…베어주마', '하찮군', '검이 운다'], hesit: ['내가 왜 네 명령을?', '…흥'], flee: ['이런 싸움은 의미 없다'],
+      idle: ['…', '시끄럽군', '누군가 따라오고 있다'], bar: ['…', '차 한 잔이면 된다', '(창밖을 보고 있다)']}},
+  soso: {name: '소소', icon: '👧', job: '도적', lvl: 1, bhp: 24, batk: 5, bdef: 1, rate: 3, aff: 40,
+    traits: [['약골', '아직 약하다', 1], ['손버릇', '보상을 몰래 빼돌린다', 0], ['성장형', '빠르게 강해진다', 0]],
+    pitch: '"밥만 주면 따라갈게요! 한 달에 3골드면 돼요."',
+    lines: {atk: ['에잇!', '뒤통수다!', '언니, 봤어요?'], hesit: ['히익… 무서워요', '저 무서운 건 싫어요', '저… 저는 여기서 볼게요'], flee: ['살려줘요!'],
+      idle: ['저 빵 맛있겠다…', '언니 어디 가요?', '여기 제 구역이었어요'], bar: ['한 푼만 주세요…', '배고파요…', '(사람들 주머니를 보고 있다)']}},
+  knight: {name: '저주받은 기사', icon: '🛡️', job: '기사', lvl: 7, bhp: 80, batk: 16, bdef: 7, rate: 0, aff: 20,
+    traits: [['철벽', '아주 강하다', 1], ['저주', '가끔 폭주해 아군을 공격한다', 0]],
+    lines: {atk: ['……', '크으으…'], hesit: ['……'], flee: ['……'], idle: ['……', '……저주가 속삭인다……']}}
+};
+const TALK = {
+  yujin: ['"고향 생각난다. 엄마는 잘 계시려나."', '"우리, 진짜 여기서 성공할 수 있겠지?"', '"너 요즘 좀 멋있어진 것 같아. …농담이야!"'],
+  bark: ['"젊었을 땐 나도 성문 하나는 지켰지."', '"엘프 놈들은 믿지 마라. 귀만 길지."', '"술 한잔이면 다 잊혀."'],
+  yeon: ['"…내 과거는 묻지 마라."', '"검을 쥔 이유? 복수다. 그 이상은 말 안 해."', '"네 검은 아직 가볍다."'],
+  soso: ['"오늘은 빵을 두 개나 먹었어요!"', '"유진 언니가 머리 묶어줬어요."', '"길에서 자는 것보다 여기가 훨씬 좋아요."'],
+  knight: ['"……저주가…… 속삭인다……"', '"……나를…… 너무 믿지 마라……"']
+};
+const RUMORS = [
+  '"던전 2층 끝에 쇠사슬에 묶인 기사가 있다더군. 풀어준 놈들은 다 후회했다나."',
+  '"고블린 족장은 혼자 잡을 상대가 아니야. 레벨 6은 돼야 겨우 버티지."',
+  '"엘프한테 활을 배운 놈들은 드워프랑 상종을 안 하지."',
+  '"뒷골목 거지 노인? 진짜 고수라는 말도 있고, 그냥 거지라는 말도 있고."',
+  '"연소하라는 검객, 쫓기는 몸이라던데. 같이 다니면 피곤할걸."',
+  '"도망치는 고블린은 바로 쫓아가. 한 턴만 늦어도 놓친다."'
+];
+const BEGGAR = ['"한 푼 줍쇼… 아니면 이야기라도 들어주게."', '"수련장에서 나를 찾으면… 뭔가 가르쳐 줄 수도 있지. 낄낄."', '"골목길엔 동전이 자주 떨어진다네. 눈을 크게 뜨게."', '"이 도시에 마족이 숨어 산다는 소문, 들어봤나?"'];
+const ENEMIES = {
+  goblin: {name: '고블린', icon: '👺', hp: 18, atk: 6, def: 1, flees: true, loot: 5},
+  archer: {name: '고블린 궁수', icon: '🏹', hp: 16, atk: 9, def: 1, flees: true, loot: 6, ranged: true},
+  wolf: {name: '늑대', icon: '🐺', hp: 26, atk: 8, def: 2, flees: false, loot: 7},
+  assassin: {name: '자객', icon: '🗡️', hp: 30, atk: 11, def: 2, flees: false, loot: 12},
+  chief: {name: '고블린 족장', icon: '👹', hp: 175, atk: 18, def: 5, flees: false, loot: 100, big: true}
+};
+const FLOORS = {
+  d1: {name: '던전 1층', w: 2300, floor: 0, enc: [{x: 760, t: ['goblin', 'goblin']}, {x: 1600, t: ['goblin', 'goblin', 'goblin']}]},
+  d2: {name: '던전 2층 · 늑대 굴', w: 2300, floor: 1, enc: [{x: 700, t: ['wolf', 'wolf']}, {x: 1450, t: ['wolf', 'archer', 'goblin']}]},
+  d3: {name: '던전 3층 · 족장의 방', w: 1500, floor: 2, enc: [{x: 1000, t: ['chief', 'goblin', 'goblin']}]}
+};
+const SHOP = {potion: {name: '회복약', icon: '🧪', price: 10, desc: '동료 모두 HP 35 회복'}, gift: {name: '선물 꾸러미', icon: '🎁', price: 8, desc: '동료 한 명 호감도 +8'}};
+
+// ================= 상태 =================
+let G;
+function fresh() {
+  return {phase: 'intro', introName: '도윤', introJob: '전사', day: 0, gold: 100, lodging: -1, player: null, party: [], gone: {},
+    master: null, log: [], scene: 'town', battle: null, run: null, renewals: [], ending: null, lock: false, fast: false,
+    potions: 0, gifts: 0, weapon: 0, coins: [], alleyDay: -1, npcs: {}};
+}
+G = fresh();
+const maxHp = u => Math.round(u.bhp + (u.lvl - 1) * u.hpg + u.bHp);
+const atkOf = u => u.batk + (u.lvl - 1) * u.atkg + u.bAtk;
+const defOf = u => u.bdef + (u.lvl - 1) * u.defg + u.bDef;
+const has = id => G.party.some(m => m.id === id);
+const getU = id => id === 'player' ? G.player : G.party.find(m => m.id === id);
+const dmg = (a, d) => Math.max(1, Math.round(a * (0.8 + R() * 0.4) - d));
+const dateStr = () => `${Math.floor(G.day / 30) + 1}월 ${G.day % 30 + 1}일`;
+const TOASTS = [];
+const log = t => { G.log.unshift(t); if (G.log.length > 80) G.log.pop(); TOASTS.unshift({t, until: performance.now() + 5500}); if (TOASTS.length > 3) TOASTS.pop(); renderLog(); };
+const priceOf = (rate, mo) => Math.round(rate * mo * (mo === 1 ? 1 : mo === 3 ? 0.9 : 0.8));
+const NAMEKEY = {'유진': 'yujin', '바르크': 'bark', '연소하': 'yeon', '소소': 'soso', '저주받은 기사': 'knight', '???': 'knight', '거지 노인': 'oldman'};
+const porKey = u => (u && u.id && SPRITES[u.id] ? u.id : (u && u.spr) || NAMEKEY[u && u.name] || '');
+const talkHtml = (u, line) => `<div class="talk" data-por="${porKey(u)}" data-nm="${esc(u.name)}"><div class="talkline">${line}</div></div>`;
+const EMO_RE = /(\p{Extended_Pictographic}|\u200d|\ufe0f|\u20e3)+\s?/gu;
+const noEmo = h => String(h).replace(EMO_RE, '');
+const PORT = {};
+function portrait(k) {
+  if (!k || !SPRITES[k]) return '';
+  if (PORT[k]) return PORT[k];
+  const S = typeof SPI !== 'undefined' && SPI[k]; const im = S && S.idle[0];
+  if (!im || !im.complete || !im.naturalWidth) return SPRITES[k].idle[0];
+  const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+  const d = g.getImageData(0, 0, im.width, im.height).data; let top = im.height, l = im.width, r = 0;
+  for (let y = 0; y < im.height; y++) for (let x = 0; x < im.width; x++) if (d[(y * im.width + x) * 4 + 3]) { top = Math.min(top, y); l = Math.min(l, x); r = Math.max(r, x); }
+  const cx = Math.round((l + r) / 2), o = document.createElement('canvas'); o.width = 16; o.height = 16; const og = o.getContext('2d');
+  og.drawImage(im, cx - 8, top - 1, 16, 16, 0, 0, 16, 16);
+  return (PORT[k] = o.toDataURL());
+}
+const isDungeon = () => !!FLOORS[G.scene];
+
+function newMember(id) {
+  const t = TEMPLATES[id];
+  const m = {id, name: t.name, icon: t.icon, job: t.job, lvl: t.lvl, bhp: t.bhp, batk: t.batk, bdef: t.bdef,
+    hpg: 5, atkg: 1.2, defg: 0.4, bHp: 0, bAtk: 0, bDef: 0, aff: t.aff, lines: t.lines,
+    traits: t.traits.map(([n, d, s]) => ({n, d, shown: !!s})), contract: Infinity, hp: 0, x: G.player ? G.player.x - 60 : 0, rot: 0, alpha: 1, flip: false};
+  m.hp = maxHp(m);
+  return m;
+}
+function reveal(m, name, why) {
+  const t = m.traits.find(t => t.n === name);
+  if (t && !t.shown) { t.shown = true; t.fresh = true; log(`🔎 ${why ? why + ' — ' : ''}${m.name}의 숨은 특성 「${t.n}」: ${t.d}`); bubble(m, '!', 1200); }
+}
+function leave(m, reason, permanent) {
+  G.party = G.party.filter(x => x !== m);
+  if (permanent) G.gone[m.id] = true;
+  log(`👋 ${j(m.name, '이', '가')} ${reason}`);
+}
+
+// ================= 모달 =================
+let modalOpen = false, menuOpen = false, mSel = 0, mBtns = [];
+function modal(html, buttons) {
+  return new Promise(res => {
+    const m = $('#modal');
+    modalOpen = true; closeMenu(true);
+    for (const k in keys) keys[k] = false;
+    const tmp = document.createElement('div'); tmp.innerHTML = noEmo(html);
+    const talk = tmp.querySelector('.talk');
+    let pf = '';
+    if (talk) {
+      const k = talk.dataset.por, nm = talk.dataset.nm;
+      pf = `<div class="pf">${k ? `<img src="${portrait(k)}">` : ''}<div class="nm paper">${esc(nm)}</div></div>`;
+      talk.removeAttribute('class');
+    }
+    $('#modalBox').innerHTML = `<div class="tx">${tmp.innerHTML}</div>${pf}`;
+    mBtns = buttons; mSel = Math.max(0, buttons.findIndex(b => !b.disabled));
+    const draw = () => { $('#mch').innerHTML = buttons.map((b, i) => `<button data-mv="${i}" class="${i === mSel ? 'on' : ''}" ${b.disabled ? 'disabled' : ''}>${noEmo(b.label)}</button>`).join(''); };
+    draw(); m._draw = draw;
+    m.classList.remove('hidden'); renderTouch();
+    m.onmouseover = e => { const t = e.target.closest('[data-mv]'); if (t && !t.disabled && +t.dataset.mv !== mSel) { mSel = +t.dataset.mv; draw(); } };
+    m.onclick = e => {
+      const t = e.target.closest('[data-mv]');
+      if (!t || t.disabled) return;
+      m.classList.add('hidden'); m.onclick = null; modalOpen = false; renderTouch();
+      res(buttons[+t.dataset.mv].value);
+    };
+  });
+}
+function modalMove(d) {
+  const n = mBtns.length; if (!n) return;
+  for (let k = 0; k < n; k++) { mSel = (mSel + d + n) % n; if (!mBtns[mSel].disabled) break; }
+  $('#modal')._draw();
+}
+function modalPick() { const b = document.querySelector(`#mch [data-mv="${mSel}"]`); if (b && !b.disabled) b.click(); }
+
+// ================= 시간 =================
+async function advance(n) {
+  for (let i = 0; i < n; i++) {
+    G.day++;
+    const heal = lodg().heal;
+    for (const u of [G.player, ...G.party]) u.hp = Math.min(maxHp(u), Math.round(u.hp + maxHp(u) * heal));
+    for (const m of G.party) {
+      if (m.contract !== Infinity) {
+        m.contract--;
+        if (m.contract <= 0 && !m.renewPending) { m.renewPending = true; G.renewals.push(m.id); }
+      }
+    }
+    if (G.day % 30 === 0) monthTick();
+    if (G.day >= DEADLINE) { gameEnd('timeout'); return false; }
+  }
+  spawnCoins();
+  renderUI();
+  await processRenewals();
+  return G.phase !== 'ending';
+}
+function spawnCoins() {
+  const beggar = G.master === '은둔고수(거지)';
+  G.coins = G.coins.filter(c => c.day >= G.day - 2);
+  const n = beggar ? 3 : (R() < 0.6 ? 1 : 0);
+  for (let i = 0; i < n; i++) G.coins.push({x: ri(2410, 2680), v: beggar ? ri(3, 8) : ri(1, 4), day: G.day});
+}
+function monthTick() {
+  log(`📅 ${dateStr()} — 새 달이 시작됐다.`);
+  const L = lodg();
+  if (G.lodging < 0) log('🌙 묵을 곳 없이 한 달을 버텼다. 모두 지쳐 있다. (호감도 -6)');
+  if (G.gold < L.cost) { G.lodging = 0; log('💸 숙박비를 낼 돈이 없어 마구간으로 옮겼다.'); }
+  else if (L.cost) { G.gold -= L.cost; log(`🏨 ${L.name} 숙박비 ${L.cost}G를 냈다.`); }
+  for (const m of G.party) {
+    let d = 0;
+    if (G.lodging < 0) d -= 6;
+    else if (G.lodging === 0) {
+      d -= 4;
+      if (m.id === 'bark') { d -= 6; reveal(m, '술꾼'); log('🍺 바르크: "마구간에서 맨정신으로 자라고? 술값이라도 내놔."'); }
+      if (m.id === 'yeon') { d -= 10; reveal(m, '자존심'); log('🥷 연소하: "말똥 냄새 나는 곳에서 검을 들 순 없다."'); }
+      if (m.id === 'soso') { d += 7; log('👧 소소: "지붕 있는 데서 자는 게 얼마 만이지!"'); }
+    } else if (G.lodging === 1) d += 1;
+    else { d += 4; if (m.id === 'yeon') d += 4; }
+    m.aff = clamp(m.aff + d, 0, 100);
+  }
+  if (has('bark') && has('yeon')) {
+    getU('bark').aff = clamp(getU('bark').aff - 3, 0, 100); getU('yeon').aff = clamp(getU('yeon').aff - 3, 0, 100);
+    log('⚡ 바르크와 연소하가 또 말다툼을 했다. (둘 다 호감도 -3)');
+  }
+  if (has('soso') && has('yujin')) {
+    getU('soso').aff = clamp(getU('soso').aff + 3, 0, 100); getU('yujin').aff = clamp(getU('yujin').aff + 3, 0, 100);
+    log('🌼 소소가 유진을 언니라고 부르며 졸졸 따라다닌다. (둘 다 호감도 +3)');
+  }
+  if (has('knight')) {
+    for (const m of G.party) if (m.id !== 'knight') m.aff = clamp(m.aff - 2, 0, 100);
+    log('😨 동료들이 저주받은 기사를 무서워한다. (호감도 -2)');
+  }
+  if (has('soso')) { const s = getU('soso'); s.lvl++; reveal(s, '성장형'); log('📈 소소가 부쩍 자랐다. (레벨 +1)'); }
+  if (has('bark') && G.gold < 20) {
+    const b = getU('bark'); reveal(b, '돈 계산');
+    if (b.aff < 60) leave(b, '텅 빈 금고를 보더니 짐을 쌌다. "돈 없는 대장은 대장이 아니지."', true);
+  }
+  if (has('yujin')) {
+    const y = getU('yujin');
+    if (G.party.some(m => m.id !== 'yujin' && m.aff > y.aff)) {
+      y.aff = clamp(y.aff - 4, 0, 100); reveal(y, '질투');
+      log('💢 유진: "요즘 새로 온 사람들만 챙기더라?" (호감도 -4)');
+    }
+  }
+  for (const m of [...G.party]) {
+    if (m.aff < 10) {
+      if (m.id === 'yujin') leave(m, '고향으로 돌아갔다. "…너 많이 변했어."', true);
+      else leave(m, '정이 떨어져 떠났다.', true);
+    }
+  }
+}
+function willRenew(m) {
+  if (m.aff < 25) return false;
+  if (m.lvl > G.player.lvl + 2 && m.aff < 60) return R() < 0.3;
+  return R() < 0.5 + m.aff / 100;
+}
+async function processRenewals() {
+  while (G.renewals.length && G.phase !== 'ending') {
+    const id = G.renewals.shift(); const m = getU(id);
+    if (!m) continue;
+    m.renewPending = false;
+    if (!willRenew(m)) {
+      const why = m.aff < 25 ? '"너랑은 여기까지야."' : '"나보다 약한 놈 밑에서 계속 일할 순 없지."';
+      await modal(talkHtml(m, why) + `<p class="dim">${j(m.name, '이', '가')} 계약이 끝나자 재계약을 거절했다.</p>`, [{label: '보내준다'}]);
+      leave(m, '계약이 끝나 떠났다.', false); continue;
+    }
+    const rate = TEMPLATES[id].rate;
+    const opts = [1, 3, 6].map(mo => ({mo, price: priceOf(rate, mo)}));
+    const v = await modal(talkHtml(m, '"계약이 끝났는데… 계속 같이 할까?"') + '<p>재계약 기간을 고르자.</p>',
+      [...opts.map(o => ({label: `${o.mo}개월 · ${o.price}G`, value: o, disabled: G.gold < o.price})), {label: '보내준다', value: null, cls: 'ghost'}]);
+    if (!v) { leave(m, '계약을 마치고 떠났다.', false); continue; }
+    G.gold -= v.price; m.contract = v.mo * 30;
+    log(`🤝 ${m.name}과(와) ${v.mo}개월 재계약했다. (-${v.price}G)`);
+  }
+  renderUI();
+}
+
+// ================= HTML UI =================
+function renderUI() { renderHUD(); renderLog(); renderScreen(); renderCmd(); renderMenu(); renderTouch(); }
+const icon = (k, cls = 'ic') => `<img class="${cls}" src="${ICON[k]}">`;
+function heartsOf(v, n) { let h = ''; const x = clamp(v, 0, 1) * n; for (let i = 0; i < n; i++) h += `<img src="${x >= i + 1 ? ICON.heart : x > i + 0.25 ? ICON.heart_h : ICON.heart_e}">`; return h; }
+function renderHUD() {
+  const el = $('#hud');
+  if (G.phase !== 'world' || !G.player) { el.innerHTML = ''; return; }
+  const L = lodg(), busy = G.lock || !!G.battle || modalOpen;
+  el.classList.toggle('dun', !!(G.battle || (isDungeon() && G.run)));
+  const us = [G.player, ...G.party];
+  el.innerHTML = `<div class="pty">${us.map(u => { const p = u.hp / maxHp(u); return `<div class="pp wood ${p < 0.3 ? 'low' : ''}" data-act="menu" data-arg="party" title="${esc(u.name)} HP ${u.hp}/${maxHp(u)}"><img class="p" src="${portrait(u.id)}"><div class="n">${esc(u.name)}</div><div class="h">${heartsOf(p, 3)}</div></div>`; }).join('')}</div>
+    <div class="clock wood"><div class="d">${dateStr()}</div><div class="t">${esc(noEmo(L.name))} · 1년차</div><div class="g">${icon('coin')}${G.gold}</div><div class="x">남은 기한 ${DEADLINE - G.day}일</div></div>
+    <div class="hot wood"><button class="slot paper" data-act="usePotion" ${busy || !G.potions ? 'disabled' : ''} title="회복약: 모두 HP 35 회복"><s>1</s>${icon('potion', '')}<b>${G.potions}</b></button>
+      <button class="slot paper" data-act="giveGift" ${busy || !G.gifts || !G.party.length ? 'disabled' : ''} title="선물: 동료 호감도 +8"><s>2</s>${icon('chest', '')}<b>${G.gifts}</b></button>
+      <button class="slot paper" data-act="menu" data-arg="party" ${G.lock || modalOpen ? 'disabled' : ''}><s>Esc</s>메뉴</button></div>`;
+}
+function renderParty() {}
+function renderLog() {
+  const now = performance.now();
+  while (TOASTS.length && TOASTS[TOASTS.length - 1].until < now) TOASTS.pop();
+  const el = $('#toasts'); if (!el) return;
+  el.innerHTML = G.phase === 'world' && !menuOpen ? TOASTS.map(o => `<div class="wood">${noEmo(o.t)}</div>`).join('') : '';
+  if (menuOpen && menuTab === 'log') renderMenu();
+}
+setInterval(() => { if (TOASTS.length && TOASTS[TOASTS.length - 1].until < performance.now()) renderLog(); }, 500);
+function chips(u) {
+  if (u.id === 'player') return `<div class="chips"><span class="chip">${esc(u.job)}</span>${G.master ? `<span class="chip">스승: ${esc(G.master)}</span>` : ''}${G.weapon ? `<span class="chip">무기 강화 +${G.weapon}</span>` : ''}</div>`;
+  const shown = u.traits.filter(t => t.shown), hid = u.traits.length - shown.length;
+  return `<div class="chips">${shown.map(t => `<span class="chip ${t.fresh ? 'new' : ''}" title="${esc(t.d)}">${t.n}</span>`).join('')}${hid ? `<span class="chip h" title="함께 지내다 보면 드러난다">??? ×${hid}</span>` : ''}</div>`;
+}
+function affWord(a) { return a >= 80 ? '두터운 신뢰' : a >= 60 ? '믿음직함' : a >= 40 ? '그럭저럭' : a >= 25 ? '경계함' : '불만 가득'; }
+let menuTab = 'party';
+function openMenu(tab) { if (G.phase !== 'world' || modalOpen || G.lock) return; menuOpen = true; menuTab = tab || menuTab; for (const k in keys) keys[k] = false; renderUI(); }
+function closeMenu(silent) { if (!menuOpen) return; menuOpen = false; if (!silent) renderUI(); else { $('#menu').classList.add('hidden'); } }
+function renderMenu() {
+  const el = $('#menu');
+  $('#hud').style.visibility = menuOpen ? 'hidden' : 'visible';
+  if (!menuOpen || G.phase !== 'world') { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const tabs = [['party', '파티'], ['log', '일지'], ['save', '저장']].map(([k, n]) => `<button class="${menuTab === k ? 'on' : ''}" data-act="menu" data-arg="${k}">${n}</button>`).join('');
+  let body = '';
+  if (menuTab === 'party') {
+    const busy = G.lock || !!G.battle;
+    body = `<h2>파티 · ${1 + G.party.length} / 4</h2>` + [G.player, ...G.party].map(u => {
+      const me = u.id === 'player', mh = maxHp(u);
+      const contract = me ? '주인공' : u.contract === Infinity ? (u.id === 'yujin' ? '고향 친구 · 계약 없음' : '계약 없음') : `계약 ${u.contract}일 남음`;
+      return `<div class="row paper"><img class="p" src="${portrait(u.id)}"><div style="flex:1;min-width:0"><div style="font-size:22px">${esc(u.name)} <span style="font-size:16px">Lv.${u.lvl} ${esc(u.job)}</span></div>
+        <div style="font-size:16px">HP ${u.hp} / ${mh} · ${contract}</div>${chips(u)}</div>
+        <div style="text-align:right;min-width:150px">${me ? '' : `<div class="hearts">${heartsOf(u.aff / 100, 5)}</div><div style="font-size:15px">${affWord(u.aff)} (${u.aff})</div>`}
+        ${me || busy ? '' : `<button data-act="dismiss" data-arg="${u.id}" style="font-size:15px;padding:4px 10px;margin-top:6px">보내기</button>`}</div></div>`;
+    }).join('') + (G.party.length < 3 ? `<div class="row paper dim" style="justify-content:center;font-size:17px">빈자리 ${3 - G.party.length} — 술집·객잔·뒷골목·던전에서 동료를 찾을 수 있다</div>` : '')
+      + `<div style="font-size:15px;opacity:.8">하트 = 호감도. 낮으면 명령을 안 듣거나, 도망치거나, 재계약을 거절한다.</div>`;
+  } else if (menuTab === 'log') {
+    body = `<h2>일지</h2><div class="jl">${G.log.length ? G.log.map(t => `<div>${noEmo(t)}</div>`).join('') : '<div>아직 아무 일도 없었다.</div>'}</div>`;
+  } else {
+    const off = G.lock || !!G.battle || isDungeon();
+    body = `<h2>저장 · 불러오기</h2><p style="font-size:18px">저장 슬롯 3개. 언제든 저장하고 불러올 수 있다. (던전 안에서는 저장 불가)</p>
+      <div style="display:flex;gap:12px;margin-top:12px"><button class="big" data-act="save" ${off ? 'disabled' : ''}>저장하기</button><button class="big" data-act="load" ${G.lock || G.battle ? 'disabled' : ''}>불러오기</button></div>
+      <p style="font-size:16px;margin-top:18px">조작: ← → 이동 · Space 대화/공격 · 1 회복약 · 2 선물 · Esc 메뉴</p>`;
+  }
+  el.innerHTML = `<div class="tabs">${tabs}</div><button class="close" data-act="menu" data-arg="close">닫기 ✕</button><div class="body">${body}</div>`;
+}
+function renderTouch() { const t = $('#touch'); if (t) t.style.visibility = (G.phase === 'world' && !modalOpen && !menuOpen) ? 'visible' : 'hidden'; const u = document.querySelector('[data-tap="use"]'); if (u) u.textContent = G.battle ? '공격' : '대화'; }
+function renderCmd() {
+  const el = $('#bcmd');
+  if (G.phase !== 'world' || !(G.battle || (isDungeon() && G.run))) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const d = G.lock || modalOpen ? 'disabled' : '';
+  const fast = `<label><input type="checkbox" ${G.fast ? 'checked' : ''} onchange="G.fast=this.checked">빠르게</label>`;
+  if (G.battle) el.innerHTML = `<button class="big" data-act="cmd" data-arg="attack" ${d}>공격 [Space]</button><span>턴 ${G.battle.turn}</span>${fast}`;
+  else el.innerHTML = `<span>${esc(SC[G.scene].name)} · 자동 전진 중</span>${fast}`;
+}
+function renderScreen() {
+  const el = $('#screen');
+  if (G.phase === 'intro') {
+    el.classList.remove('hidden');
+    el.innerHTML = `<div class="intro wood"><h1>로운</h1><p class="dim">파티원 고용 RPG · 프로토타입 v9</p>
+      <p>시골 마을에서 고향 친구 <b>유진</b>과 함께 도시로 올라왔다. 손에 쥔 건 모아둔 <b>100골드</b>뿐.<br>1년 안에 던전 3층의 고블린 족장을 쓰러뜨려 이 도시에 이름을 남기자.</p>
+      <p><label>주인공 이름 (남)<input id="pname" maxlength="8" value="${esc(G.introName)}" oninput="G.introName=this.value"></label></p>
+      <div class="jobs">
+        <button data-act="job" data-arg="전사" class="${G.introJob === '전사' ? 'sel' : ''}">전사<small>체력과 방어가 높다</small></button>
+        <button data-act="job" data-arg="궁수" class="${G.introJob === '궁수' ? 'sel' : ''}">궁수<small>공격이 높고 몸이 약하다</small></button>
+      </div>
+      <button class="big" data-act="start">시작한다</button>${readSaves().some(Boolean) ? ' <button class="big" data-act="load">이어하기</button>' : ''}</div>`;
+  } else if (G.phase === 'ending') {
+    el.classList.remove('hidden'); el.innerHTML = noEmo(endingView()).replace('class="ending"', 'class="ending wood"');
+  } else el.classList.add('hidden');
+}
+
+// ================= 월드: 장면 정의 =================
+const W = 960, H = 600, GY = 496, PX = 4;
+const cv = $('#cv'), ctx = cv.getContext('2d');
+const keys = {};
+let camX = 0, shake = 0, tnow = 0;
+const tweens = [], popups = [], projs = [];
+const BLD = [
+  {id: 'stable', door: 204, sign: '마구간'}, {id: 'lodge', door: 648, sign: '여관'}, {id: 'shop', door: 1178, sign: '잡화점'},
+  {id: 'tavern', door: 1572, sign: '술집'}, {id: 'inn', door: 2096, sign: '객잔'}, {id: 'train', door: 2944, sign: '수련장'}
+];
+const doorX = id => BLD.find(b => b.id === id).door;
+const SC = {
+  town: {name: '도시 거리', w: 3920}, stable: {name: '마구간', w: 1000}, lodge: {name: '여관', w: 1560}, shop: {name: '잡화점', w: 1000},
+  tavern: {name: '술집', w: 1320}, inn: {name: '객잔', w: 1320}, train: {name: '수련장', w: 1100},
+  d1: {name: FLOORS.d1.name, w: FLOORS.d1.w}, d2: {name: FLOORS.d2.name, w: FLOORS.d2.w}, d3: {name: FLOORS.d3.name, w: FLOORS.d3.w}
+};
+function makeNpcs(sc) {
+  const N = (icon, name, x, range, lines, extra = {}) => ({icon, name, x, home: x, range, lines, dir: 1, wait: R() * 3, next: 2 + R() * 6, ...extra});
+  switch (sc) {
+    case 'town': return [N('🧑‍🌾', '농부', 900, 260, ['오늘 장사는 글렀네', '밀값이 또 올랐어'], {spr: 'farmer'}), N('👵', '할머니', 1850, 160, ['요즘 젊은것들은…', '고블린 때문에 밤에 못 나가'], {spr: 'witch'}),
+      N('🧒', '꼬마', 1300, 380, ['형 모험가야?', '우와 칼이다!'], {spr: 'kid'}), N('🧙', '떠돌이 마법사', 3120, 120, ['성 밖은 위험하다네', '흠흠…'], {spr: 'wizzard_m'}),
+      N('💂', '성문 경비', 3348, 0, ['던전은 성 밖 동쪽이오', '몸조심하시오'], {spr: 'knight_m'})];
+    case 'tavern': return [N('👨‍🦲', '술꾼', 330, 50, ['한 잔 더!', '크하하!', '건배!'], {spr: 'lizard'}), N('🧑‍🦰', '용병', 830, 60, ['요즘 의뢰가 없어', '고블린 족장? 미쳤냐'], {spr: 'knight_m'}),
+      N('🧔‍♂️', '바텐더', 1140, 30, ['뭐 마실 텐가?', '외상은 안 돼'], {role: 'bartender', spr: 'barkeep'})];
+    case 'inn': return [N('🧔‍♂️', '강호인', 300, 50, ['이 객잔 만두가 일품이지', '쉿, 저 검객 건드리지 마'], {spr: 'masked'}), N('👳', '상단 호위', 840, 60, ['서역에서 오는 길이오'], {spr: 'lizardf'}),
+      N('👲', '객잔 주인', 1140, 30, ['어서 오시오', '소문이라면 내가 제일 빠르지'], {role: 'innkeeper', spr: 'innkeep'})];
+    case 'shop': return [N('🧑‍💼', '잡화점 주인', 640, 40, ['어서 옵쇼!', '오늘 회복약 신선해요'], {role: 'merchant', spr: 'shopkeep'})];
+    case 'lodge': return [N('💁', '여관 주인', 270, 25, ['방 필요하세요?', '고급실은 침대가 달라요'], {role: 'host', spr: 'elf_f'}), N('🧳', '부자 여행객', 1240, 70, ['역시 고급실이지', '창밖 경치 좋네'], {spr: 'wizzard_m'})];
+    case 'stable': return [N('', '', 352, 0, ['히히힝', '푸르릉'], {hidden: true}), N('', '', 584, 0, ['히히힝', '푸르릉'], {hidden: true})];
+    case 'train': return [N('🧑‍🏫', '교관', 540, 40, ['땀은 배신하지 않는다!', '수련할 텐가?'], {role: 'coach', spr: 'orc_warrior'})];
+    default: return [];
+  }
+}
+const npcs = sc => (G.npcs[sc] = G.npcs[sc] || makeNpcs(sc));
+// 상호작용 대상(동적으로 계산)
+function interactables() {
+  const s = G.scene, L = [];
+  const add = (x, label, fn, extra = {}) => L.push({x, label, fn, ...extra});
+  if (s === 'town') {
+    for (const b of BLD) add(doorX(b.id), `${b.sign} 들어가기`, () => goScene(b.id, 120));
+    add(3768, '던전에 들어가기', enterDungeon);
+    if (!has('soso') && !G.gone.soso) add(2480, '소소에게 말 걸기', () => hireTalk('soso'), {who: 'soso'});
+    add(2630, '거지 노인에게 말 걸기', beggarTalk, {who: 'beggar'});
+  } else if (FLOORS[s]) {
+  } else {
+    add(70, '밖으로 나가기', () => goScene('town', doorX(s)));
+    for (const n of npcs(s)) if (n.role) add(n.x, `${n.name}에게 말 걸기`, () => roleTalk(n.role, n), {npc: n});
+    if (s === 'tavern' && !has('bark') && !G.gone.bark) add(600, '바르크에게 말 걸기', () => hireTalk('bark'), {who: 'bark'});
+    if (s === 'inn' && !has('yeon') && !G.gone.yeon) add(520, '연소하에게 말 걸기', () => hireTalk('yeon'), {who: 'yeon'});
+    if (s === 'lodge') { add(780, '일반실 침대', () => bedTalk(1)); add(1300, '고급실 침대', () => bedTalk(2)); }
+    if (s === 'stable') add(870, '건초 더미 (마구간 잠자리)', () => bedTalk(0));
+  }
+  return L;
+}
+// 장면에 서 있는 특별 인물(고용 후보 등)
+function specials() {
+  const s = G.scene, L = [];
+  if (s === 'town') { if (!has('soso') && !G.gone.soso) L.push({icon: '👧', name: '소소', x: 2480, id: 'soso'}); L.push({icon: '🧓', name: '거지 노인', x: 2630, id: 'beggar'}); }
+  if (s === 'tavern' && !has('bark') && !G.gone.bark) L.push({icon: '🧔', name: '바르크', x: 600, id: 'bark'});
+  if (s === 'inn' && !has('yeon') && !G.gone.yeon) L.push({icon: '🥷', name: '연소하', x: 520, id: 'yeon'});
+  if (s === 'd2' && !has('knight') && !G.gone.knight) L.push({icon: '🛡️', name: '묶인 기사', x: 1900, id: 'knight', chained: true});
+  return L;
+}
+const SPECIAL_LINES = {soso: ['한 푼만 주세요…', '배고파요…', '저 쓸모 있어요!'], beggar: ['낄낄…', '동전 하나만…', '나도 왕년엔…'],
+  bark: ['꺼억', '용병 필요하나?', '술값이 모자라…'], yeon: ['…', '(검을 닦고 있다)', '…볼일 있나'], knight: ['……풀어다오……', '……']};
+
+// ================= 장면 이동 =================
+function goScene(sc, x) {
+  G.scene = sc;
+  if (G.run) { G.run.atStairs = false; }
+  const P = G.player;
+  P.x = x; P.flip = false;
+  G.party.forEach((m, i) => { m.x = x - 74 * (i + 1); m.flip = false; m.rot = 0; m.alpha = 1; });
+  camX = clamp(x - W / 2, 0, SC[sc].w - W);
+  if (sc === 'town' && x > 2392 && x < 2696) alleyCheck();
+  renderUI();
+}
+function alleyCheck() {
+  if (G.alleyDay === G.day) return;
+  G.alleyDay = G.day;
+  if (R() < 0.15) {
+    if (has('soso')) { const s = getU('soso'); bubble(s, '제 구역이에요! 저리 가!'); log('👧 소매치기가 다가오자 소소가 먼저 알아보고 쫓아냈다.'); }
+    else { const lost = Math.min(G.gold, ri(2, 5)); G.gold -= lost; bubble(G.player, '어? 지갑이…'); log(`🫳 골목에서 소매치기를 당했다. (-${lost}G)`); renderHUD(); }
+  }
+}
+
+// ================= 상호작용 =================
+async function hireTalk(id) {
+  const t = TEMPLATES[id];
+  if (G.party.length >= 3) { await modal(talkHtml(t, t.pitch) + '<p class="dim">파티에 자리가 없다. (주인공 + 최대 3명) 파티 카드의 "보내기"로 자리를 비울 수 있다.</p>', [{label: '확인'}]); return; }
+  const go = await modal(talkHtml(t, t.pitch) + `<p class="dim">Lv.${t.lvl} ${t.job} · 한 달 ${t.rate}G · 보이는 특성: ${t.traits.filter(x => x[2]).map(x => x[0]).join(', ')} · 숨은 특성 ${t.traits.filter(x => !x[2]).length}개</p>`,
+    [{label: '🤝 고용을 제안한다 (1일)', value: true}, {label: '그냥 지나간다', value: false, cls: 'ghost'}]);
+  if (!go) return;
+  if (t.lvl > G.player.lvl + 3 && R() < 0.6) {
+    await modal(talkHtml(t, '"애송이 밑에서 일할 생각은 없다. 실력부터 키워 와라."') + `<p class="dim">내 레벨(${G.player.lvl})이 너무 낮으면 거절당할 수 있다. 하루가 지났다.</p>`, [{label: '물러난다'}]);
+    log(`🙅 ${j(t.name, '이', '가')} 고용을 거절했다.`);
+    await advance(1); return;
+  }
+  const opts = [1, 3, 6].map(mo => ({mo, price: priceOf(t.rate, mo)}));
+  const v = await modal('<p>계약 기간을 고르자. 길게 계약할수록 한 달 값이 싸진다.</p>',
+    [...opts.map(o => ({label: `${o.mo}개월 · ${o.price}G`, value: o, disabled: G.gold < o.price})), {label: '그만둔다', value: null, cls: 'ghost'}]);
+  if (!v) return;
+  G.gold -= v.price;
+  const m = newMember(id); m.contract = v.mo * 30;
+  m.x = id === 'soso' ? 2480 : id === 'bark' ? 600 : 520;
+  G.party.push(m);
+  log(`🤝 ${j(m.name, '을', '를')} ${v.mo}개월 고용했다. (-${v.price}G)`);
+  bubble(m, id === 'soso' ? '와! 따라갈게요!' : id === 'bark' ? '좋아, 계약이다' : '…실망시키지 마라');
+  if (id === 'bark' && G.master === '엘프') { m.aff = clamp(m.aff - 20, 0, 100); log('🧔 바르크: "엘프한테 배운 놈이라고? …돈만 받고 일하마." (호감도 -20)'); }
+  await advance(1);
+}
+async function beggarTalk() {
+  const v = await modal(talkHtml({icon: '🧓', name: '거지 노인'}, pick(BEGGAR)), [{label: '동전 1G를 준다', value: true, disabled: G.gold < 1}, {label: '그냥 간다', value: false, cls: 'ghost'}]);
+  if (v) { G.gold -= 1; log('🧓 거지 노인: "고맙네. 이건 내 이야기 값일세… " ' + pick(RUMORS)); renderHUD(); }
+}
+async function roleTalk(role, n) {
+  if (role === 'bartender') {
+    const v = await modal(talkHtml(n, '"뭐 마실 텐가?"'), [{label: '🍻 동료들에게 한잔 돌린다 (6G · 1일 · 호감도 +3)', value: true, disabled: G.gold < 6 || !G.party.length}, {label: '그냥 간다', value: false, cls: 'ghost'}]);
+    if (!v) return;
+    G.gold -= 6;
+    for (const m of G.party) { m.aff = clamp(m.aff + (m.id === 'bark' ? 9 : 3), 0, 100); bubble(m, m.id === 'bark' ? '크하! 이 맛이지!' : '건배!'); }
+    log('🍻 한잔 돌렸다. (-6G · 동료 호감도 +3, 바르크는 +9)');
+    if (has('yujin') && R() < 0.35) { const lost = Math.min(G.gold, 4); G.gold -= lost; reveal(getU('yujin'), '촌놈'); bubble(getU('yujin'), '어? 거스름돈이…'); log(`🧾 유진이 술값 계산하다 바가지를 썼다. (-${lost}G)`); }
+    await advance(1);
+  } else if (role === 'innkeeper') {
+    const v = await modal(talkHtml(n, '"소문이 궁금하오? 차 한 잔 하며 들으시오."'), [{label: '👂 소문을 듣는다 (1일)', value: true}, {label: '그냥 간다', value: false, cls: 'ghost'}]);
+    if (!v) return;
+    log(`👂 객잔의 소문: ${pick(RUMORS)}`); await advance(1);
+  } else if (role === 'merchant') {
+    const wp = 25 + 15 * G.weapon;
+    const v = await modal(talkHtml(n, '"어서 옵쇼! 뭘 드릴깝쇼?"') + '<p class="dim">회복약은 마을이나 던전에서 쓸 수 있다 (전투 중에는 못 씀).</p>', [
+      {label: `🧪 회복약 · ${SHOP.potion.price}G <small>${SHOP.potion.desc}</small>`, value: 'potion', disabled: G.gold < SHOP.potion.price},
+      {label: `🎁 선물 꾸러미 · ${SHOP.gift.price}G <small>${SHOP.gift.desc}</small>`, value: 'gift', disabled: G.gold < SHOP.gift.price},
+      {label: `⚔️ 무기 강화 +${G.weapon + 1} · ${wp}G <small>주인공 공격력 +2</small>`, value: 'weapon', disabled: G.gold < wp},
+      {label: '그냥 간다', value: null, cls: 'ghost'}]);
+    if (!v) return;
+    if (v === 'potion') { G.gold -= SHOP.potion.price; G.potions++; log('🧪 회복약을 샀다.'); }
+    if (v === 'gift') { G.gold -= SHOP.gift.price; G.gifts++; log('🎁 선물 꾸러미를 샀다.'); }
+    if (v === 'weapon') { G.gold -= wp; G.weapon++; G.player.bAtk += 2; log(`⚔️ 무기를 +${G.weapon}로 강화했다. (공격력 +2)`); bubble(G.player, '오, 날이 섰다!'); }
+    if (has('yujin') && R() < 0.25) { reveal(getU('yujin'), '촌놈'); const lost = Math.min(G.gold, 3); G.gold -= lost; log(`🧾 유진이 덤으로 산 물건이 바가지였다. (-${lost}G)`); }
+    renderUI();
+  } else if (role === 'host') {
+    const t = await modal(talkHtml(n, G.lodging < 0 ? '"방 찾으세요? 일반실이랑 고급실이 있어요. 안쪽에 직접 들어가서 구경해 보셔도 돼요."' : `"지금 손님 방은 <b>${lodg().name}</b>이에요. 바꾸시겠어요?"`) + '<p class="dim">바꾸면 새 숙소의 한 달 값을 바로 낸다. 매달 1일마다 다시 낸다. 방은 직접 들어가서 구경할 수 있다.</p>',
+      [...LODGING.map((L, i) => ({label: `${L.icon} ${L.name} · ${L.cost}G <small>${L.desc}</small>`, value: i, disabled: i === G.lodging || G.gold < L.cost})), {label: '그대로 둔다', value: null, cls: 'ghost'}]);
+    if (t === null || t === undefined) return;
+    takeRoom(t);
+  } else if (role === 'coach') {
+    const v = await modal(talkHtml(n, '"땀은 배신하지 않는다! 무엇을 하겠나?"') + `<p class="dim">수련하는 동안 동료들은 방치된다.</p>`, [
+      {label: '🥋 홀로 수련 · 1개월 <small>30일 · 레벨 +2 · 동료 호감도 -4</small>', value: 'train'},
+      {label: `🎓 스승의 가르침 · 3개월 <small>90일 · 레벨 +3 · 전용 특성 · 회차당 1번${G.master ? ' (이미 수료)' : ''}</small>`, value: 'master', disabled: !!G.master},
+      {label: '그냥 간다', value: null, cls: 'ghost'}]);
+    if (v === 'train') await doTrain();
+    if (v === 'master') await doMaster();
+  }
+}
+function takeRoom(t) {
+  const first = G.lodging < 0;
+  G.gold -= LODGING[t].cost; G.lodging = t;
+  log(`🏨 ${first ? '숙소를' : '숙소를 옮겨'} ${LODGING[t].name}(으)로 정했다. (-${LODGING[t].cost}G)`);
+  const y = getU('yujin');
+  if (y) bubble(y, t === 0 ? (first ? '마구간…? 뭐, 공짜니까' : '여기로 내려온다고…?') : t === 2 ? '고급실?! 돈 괜찮아?' : '좋아, 무난하네!', 2600);
+  for (const m of G.party) if (m.id === 'yeon' && t === 0) bubble(m, '…말도 안 되는군', 2200);
+  for (const m of G.party) if (m.id === 'soso' && t === 2) bubble(m, '이런 데서 자도 돼요?!', 2200);
+  renderUI();
+}
+async function bedTalk(tier) {
+  const L = LODGING[tier];
+  if (tier !== G.lodging) {
+    const head = G.lodging < 0 ? '아직 묵을 곳을 정하지 않았다.' : `지금 숙소는 ${lodg().name}이다.`;
+    const v = await modal(`<p>${L.icon} <b>${L.name}</b> · 매달 ${L.cost}G</p><p>${L.desc}</p><p class="dim">${head} 정하면 이번 달 값을 바로 내고, 매달 1일마다 다시 낸다.</p>`,
+      [{label: tier === 0 ? '🌾 여기서 자기로 한다 (공짜)' : `🔑 이 방으로 정한다 (${L.cost}G)`, value: true, disabled: G.gold < L.cost}, {label: '좀 더 둘러본다', value: false, cls: 'ghost'}]);
+    if (v) takeRoom(tier);
+    return;
+  }
+  const v = await modal(`<p>${L.icon} <b>${L.name}</b> — 우리 일행의 잠자리다.</p>`, [
+    {label: '😴 하루 쉰다 (1일)', value: 'rest'},
+    {label: '💬 동료와 이야기한다 (1일 · 호감도 +5)', value: 'talk', disabled: !G.party.length},
+    {label: '그만둔다', value: null, cls: 'ghost'}]);
+  if (v === 'rest') { log(`😴 ${L.name}에서 하루 쉬었다.`); for (const m of G.party) bubble(m, tier === 0 ? pick(['으, 말똥 냄새…', '건초가 따가워', '음냐…']) : tier === 2 ? pick(['폭신하다~', '이게 도시지!', '꿀잠 예약']) : pick(['잘 자', '내일 봐'])); await advance(1); }
+  if (v === 'talk') await doTalk();
+}
+async function doTalk() {
+  const id = await modal('<p>누구와 이야기할까?</p>', [...G.party.map(m => ({label: `${m.icon} ${m.name} · 호감도 ${m.aff}`, value: m.id})), {label: '그만둔다', value: null, cls: 'ghost'}]);
+  if (!id) return;
+  const m = getU(id);
+  m.aff = clamp(m.aff + 5, 0, 100);
+  const line = pick(TALK[id]);
+  bubble(m, line.replace(/"/g, ''), 2600);
+  log(`💬 ${m.icon} ${m.name}: ${line} (호감도 +5)`);
+  if (id !== 'yujin' && has('yujin')) {
+    const y = getU('yujin'); y.aff = clamp(y.aff - 2, 0, 100);
+    if (R() < 0.4) { reveal(y, '질투'); bubble(y, '…나랑은 얘기도 안 하네'); log('💢 유진: "…요즘 나랑은 얘기도 안 하네." (호감도 -2)'); }
+  }
+  await advance(1);
+}
+async function doTrain() {
+  G.player.lvl += 2;
+  for (const m of G.party) m.aff = clamp(m.aff - 4, 0, 100);
+  log('🥋 한 달간 수련했다. (레벨 +2 · 동료 호감도 -4)');
+  if (has('yujin')) { bubble(getU('yujin'), '한 달 동안 얼굴도 안 비추고… 됐어.', 2600); log('👩‍🦰 유진: "한 달 동안 얼굴도 안 비추고… 됐어."'); }
+  await advance(30);
+}
+async function doMaster() {
+  const c = await modal('<h3>스승 선택 (회차당 1번)</h3><p>90일 동안 가르침을 받는다. 레벨 +3과 전용 특성.</p>' +
+    '<p>🧝 <b>엘프</b> — 활을 잘 다루고 화살에 정령을 담는다. 드워프와 사이가 나빠진다.</p>' +
+    '<p>⛏️ <b>드워프</b> — 둔기를 잘 다루고 체력이 는다. 드워프와 친해진다.</p>' +
+    '<p>🧙 <b>뒷골목 은둔고수</b> — 진짜 고수일 수도, 그냥 거지일 수도, 마족일 수도 있다.</p>',
+    [{label: '🧝 엘프', value: 'elf'}, {label: '⛏️ 드워프', value: 'dwarf'}, {label: '🧙 은둔고수', value: 'hermit'}, {label: '그만둔다', value: null, cls: 'ghost'}]);
+  if (!c) return;
+  const P = G.player; P.lvl += 3;
+  let msg = '';
+  if (c === 'elf') {
+    G.master = '엘프'; P.bAtk += P.job === '궁수' ? 7 : 4; msg = '정령을 담은 화살을 배웠다. 공격력이 크게 올랐다.';
+    if (has('bark')) { getU('bark').aff = clamp(getU('bark').aff - 20, 0, 100); log('🧔 바르크: "엘프 놈한테 배웠다고? 퉤." (호감도 -20)'); }
+  } else if (c === 'dwarf') {
+    G.master = '드워프'; P.bHp += 20; P.bDef += P.job === '전사' ? 3 : 2; msg = '드워프식 단련으로 체력과 방어가 올랐다.';
+    if (has('bark')) { getU('bark').aff = clamp(getU('bark').aff + 15, 0, 100); log('🧔 바르크: "오, 드워프 밥 좀 먹었구먼!" (호감도 +15)'); }
+  } else {
+    const r = R();
+    if (r < 0.35) { G.master = '은둔고수(진짜)'; P.bAtk += 8; msg = '진짜 고수였다! 검기를 날리는 법을 배웠다.'; }
+    else if (r < 0.8) { G.master = '은둔고수(거지)'; msg = '…알고 보니 그냥 거지였다. 대신 골목에서 동전을 찾는 눈썰미를 배웠다.'; }
+    else { G.master = '은둔고수(마족)'; P.bAtk += 12; msg = '정체는 마족이었다. 강력한 힘을 얻었지만, 동료들이 섬뜩해한다.'; for (const m of G.party) m.aff = clamp(m.aff - 8, 0, 100); }
+  }
+  for (const m of G.party) m.aff = clamp(m.aff - 6, 0, 100);
+  log(`🎓 3개월간 ${G.master}의 가르침을 받았다. ${msg} (레벨 +3 · 동료 호감도 -6)`);
+  const ok = await advance(90);
+  if (ok) await modal(`<h3>수련을 마쳤다</h3><p>스승: <b>${G.master}</b></p><p>${msg}</p>`, [{label: '확인'}]);
+}
+async function usePotion() {
+  if (!G.potions) return;
+  G.potions--;
+  for (const u of [G.player, ...G.party]) { u.hp = Math.min(maxHp(u), u.hp + 35); popup(u.x, GY - 70, '+35', '#7fe07f'); }
+  log('🧪 회복약을 썼다. (모두 HP +35)');
+}
+async function giveGift() {
+  const id = await modal('<p>누구에게 선물할까?</p>', [...G.party.map(m => ({label: `${m.icon} ${m.name} · 호감도 ${m.aff}`, value: m.id})), {label: '그만둔다', value: null, cls: 'ghost'}]);
+  if (!id) return;
+  const m = getU(id); G.gifts--;
+  m.aff = clamp(m.aff + 8, 0, 100);
+  bubble(m, {yujin: '에이, 뭘 이런 걸…', bark: '술이면 더 좋았을걸', yeon: '…받아두지', soso: '진짜 제 거예요?!', knight: '……'}[id], 2200);
+  log(`🎁 ${m.name}에게 선물을 줬다. (호감도 +8)`);
+  if (id !== 'yujin' && has('yujin')) { const y = getU('yujin'); y.aff = clamp(y.aff - 3, 0, 100); reveal(y, '질투'); bubble(y, '…나는?'); log('💢 유진: "…나는?" (호감도 -3)'); }
+}
+
+// ================= 던전 =================
+async function enterDungeon() {
+  const ok = await modal('<h3>던전 입구</h3><p>안은 3층 구조다. 한 번 들어가면 <b>그 층을 끝낼 때까지 나올 수 없다.</b> 파티는 알아서 전진하고, 적과 마주치면 그 자리에서 싸운다. 층을 정리하면 계단에서 내려갈지 돌아갈지 고른다.</p><p>쓰러지면 죽지는 않지만, <b>전리품을 전부 잃고 10일 뒤</b> 숙소에서 깨어난다. 동료들은 리더를 탓한다.</p><p class="dim">한 번 다녀오면 3일이 지난다. HP는 마을로 돌아가야 회복된다.</p>',
+    [{label: '⚔️ 들어간다', value: true}, {label: '아직', value: false, cls: 'ghost'}]);
+  if (!ok) return;
+  G.run = {loot: 0, cleared: {d1: [], d2: [], d3: []}, ambush: has('yeon') && R() < 0.4};
+  goScene('d1', 140);
+  log('🕳️ 던전 1층에 들어섰다.');
+}
+async function exitDungeon() {
+  if (!G.run) return;
+  const ok = await modal(`<p>마을로 돌아갈까? 지금까지 전리품 <b>${G.run.loot}G</b></p>`, [{label: '🏘️ 돌아간다', value: true}, {label: '계속 전진한다', value: false, cls: 'ghost'}]);
+  if (ok) await endRun();
+}
+async function stairsPrompt() {
+  if (G.scene === 'd3') return;
+  const next = G.scene === 'd1' ? 'd2' : 'd3';
+  const st = [G.player, ...G.party].map(u => `${u.icon} ${u.hp}/${maxHp(u)}`).join(' · ');
+  const v = await modal(`<h3>${SC[G.scene].name} 정리 완료</h3><p>계단이 보인다. 아래층은 <b>${SC[next].name}</b>.</p><p>${st}</p><p class="dim">지금까지 전리품 ${G.run.loot}G · HP는 마을로 돌아가야 회복된다.${G.potions ? ' (파티 카드에서 회복약을 쓸 수 있다)' : ''}</p>`,
+    [{label: '⬇ 내려간다', value: 'down'}, {label: '🏘️ 마을로 돌아간다', value: 'home', cls: 'ghost'}]);
+  if (v === 'down') { goScene(next, 140); log(`🪜 ${SC[next].name}에 내려왔다.`); }
+  else await endRun();
+}
+function encounters() {
+  const f = FLOORS[G.scene]; if (!f || !G.run) return [];
+  const list = f.enc.map((e, i) => ({...e, i})).filter(e => !G.run.cleared[G.scene].includes(e.i));
+  if (G.scene === 'd1' && G.run.ambush) list.unshift({x: 420, t: ['assassin', 'assassin'], i: 'amb', ambush: true});
+  return list;
+}
+async function knightEvent() {
+  const full = G.party.length >= 3;
+  const v = await modal(`<h3>쇠사슬에 묶인 기사</h3>${talkHtml({icon: '🛡️', name: '???'}, '"……풀어다오…… 대가는…… 이 검으로 치르겠다……"')}
+    <p class="dim">공짜로 합류하는 강한 동료. 하지만 어딘가 섬뜩하다.${full ? '<br>지금은 파티에 자리가 없다.' : ''}</p>`,
+    [{label: '쇠사슬을 풀어준다', value: true, disabled: full}, {label: '모른 척 지나간다', value: false, cls: 'ghost'}]);
+  if (v) { const m = newMember('knight'); m.hp = Math.round(maxHp(m) * 0.5); m.x = 1900; G.party.push(m); bubble(m, '……고맙다……'); log('🛡️ 저주받은 기사가 동료가 되었다.'); }
+}
+async function endRun() {
+  const loot = G.run ? G.run.loot : 0;
+  G.battle = null; G.run = null;
+  goScene('town', 3700);
+  if (loot > 0) {
+    let pool = loot;
+    if (has('soso')) {
+      const s = getU('soso');
+      if (s.aff < 50 && R() < 0.7) { const st = Math.max(1, Math.ceil(loot * 0.15)); pool -= st; reveal(s, '손버릇'); bubble(s, '(휘파람~)'); log(`👛 소소의 주머니가 불룩하다… 전리품 ${st}G가 사라졌다.`); }
+    }
+    if (G.party.length) {
+      const c = await modal(`<h3>전리품 분배</h3><p>전리품 <b>${pool}G</b>를 어떻게 나눌까?</p>`, [
+        {label: `⚖️ 공평하게 <small>내 몫 ${Math.round(pool * 0.4)}G · 동료 호감도 +5</small>`, value: 'fair'},
+        {label: `💰 내가 많이 <small>내 몫 ${Math.round(pool * 0.8)}G · 동료 호감도 -6</small>`, value: 'greedy'},
+        {label: `🎁 동료에게 많이 <small>내 몫 ${Math.round(pool * 0.15)}G · 동료 호감도 +10</small>`, value: 'generous'}]);
+      const rate = {fair: 0.4, greedy: 0.8, generous: 0.15}[c], d = {fair: 5, greedy: -6, generous: 10}[c];
+      G.gold += Math.round(pool * rate);
+      for (const m of G.party) { m.aff = clamp(m.aff + d, 0, 100); bubble(m, d > 0 ? pick(['고마워!', '역시 대장', '헤헤']) : pick(['쳇', '쩨쩨하긴', '…']), 1800); }
+      log(`💰 전리품을 나눴다. 내 몫 ${Math.round(pool * rate)}G (동료 호감도 ${d > 0 ? '+' : ''}${d})`);
+      if (c === 'greedy' && has('bark')) { getU('bark').aff = clamp(getU('bark').aff - 4, 0, 100); log('🧔 바르크: "쩨쩨하긴."'); }
+    } else G.gold += pool;
+  }
+  G.player.lvl++;
+  for (const m of G.party) m.lvl++;
+  log('📈 경험이 쌓였다. 모두 레벨 +1');
+  const cands = G.party.flatMap(m => m.traits.filter(t => !t.shown).map(t => [m, t]));
+  if (cands.length && R() < 0.6) { const [m, t] = pick(cands); reveal(m, t.n, '함께 싸우며 알게 됐다'); }
+  await advance(3);
+}
+
+// ================= 전투 (필드 연출) =================
+const sp = ms => sleep(ms * (G.fast ? 0.4 : 1));
+function tween(o, props, ms) {
+  return new Promise(res => { const from = {}; for (const k in props) from[k] = o[k]; tweens.push({o, from, to: props, t: 0, ms: Math.max(1, ms * (G.fast ? 0.4 : 1)), res}); });
+}
+function bubble(o, text, ms = 1500) { if (o && text) { o.bubble = text; o.bubbleUntil = tnow + ms; } }
+function popup(x, y, text, color) { popups.push({x, y, text, color, t: 0}); }
+function mkEnemy(type, x) { const e = ENEMIES[type]; return {...e, type, id: uid(), max: e.hp, state: 'ok', x, rot: 0, alpha: 1, flip: true}; }
+const inB = id => { const B = G.battle; return B && B.allies.includes(id) && !B.out[id] && getU(id) && getU(id).hp > 0; };
+async function startBattle(enc) {
+  G.lock = true;
+  const B = G.battle = {enc, enemies: enc.t.map((t, i) => mkEnemy(t, enc.x + 40 + i * 84)), allies: ['player', ...G.party.map(m => m.id)], out: {}, turn: 1, escaped: 0};
+  for (const u of [G.player, ...G.party]) { if (u.hp < 1) u.hp = 1; u.rot = 0; u.alpha = 1; }
+  log(enc.ambush ? '⚔️ 매복! 연소하를 노리는 자객이 나타났다!' : `⚔️ ${B.enemies.map(e => e.name).join(', ')}과(와) 마주쳤다!`);
+  if (enc.ambush) reveal(getU('yeon'), '원수');
+  const P = G.player, baseX = enc.x - 120;
+  P.flip = false;
+  await Promise.all([tween(P, {x: baseX}, 300), ...G.party.map((m, i) => { m.flip = false; return tween(m, {x: baseX - 80 * (i + 1)}, 360); })]);
+  bubble(B.enemies[0], enc.ambush ? '연소하, 목을 내놓아라!' : B.enemies[0].type === 'chief' ? '크하하! 먹잇감이 왔구나!' : B.enemies[0].type === 'wolf' ? '크르르릉…' : '끼에엑!', 1600);
+  const brave = G.party.find(m => m.aff > 50);
+  if (brave) bubble(brave, pick(brave.lines.atk), 1400);
+  const scared = G.party.find(m => m.aff < 35);
+  if (scared) bubble(scared, pick(scared.lines.hesit), 1600);
+  G.lock = false;
+  renderUI();
+}
+function pickTarget() {
+  const B = G.battle;
+  const fl = B.enemies.filter(e => e.state === 'fleeing');
+  if (fl.length) return pick(fl);
+  const ok = B.enemies.filter(e => e.state === 'ok');
+  return ok.length ? pick(ok) : null;
+}
+function obey(m) {
+  let p = 0.5 + m.aff / 200;
+  if (m.id === 'bark') p += 0.25;
+  if (m.id === 'knight') p += 0.1;
+  if (m.id === 'yeon' && G.player.lvl < m.lvl - 2) p -= 0.15;
+  return clamp(p, 0.1, 0.97);
+}
+async function strike(a, t, d, ranged, color) {
+  const ox = a.x;
+  if (ranged) {
+    const p = {x: a.x + (t.x > a.x ? 20 : -20), y: GY - 30, to: t.x};
+    projs.push(p);
+    await tween(p, {x: t.x}, 260);
+    projs.splice(projs.indexOf(p), 1);
+  } else {
+    const dir = t.x > a.x ? 1 : -1;
+    await tween(a, {x: t.x - dir * 46}, 200);
+  }
+  t.hp = Math.max(0, t.hp - d);
+  t.hurt = tnow + 260; shake = Math.max(shake, d > 15 ? 0.25 : 0.12);
+  popup(t.x, GY - 70, `-${d}`, color || '#ffdf6b');
+  if (!ranged) await tween(a, {x: ox}, 200);
+  renderParty();
+}
+async function hit(u, e, line) {
+  const d = dmg(atkOf(u), e.def);
+  if (line) bubble(u, line, 900);
+  await strike(u, e, d, u.id === 'player' && u.job === '궁수', u.id === 'player' ? '#ffd24a' : '#ffe9a8');
+  log(`${u.icon} ${u.name} → ${e.name} ${d} 피해`);
+  if (e.hp <= 0) {
+    e.state = 'dead'; bubble(e, '끄엑…', 700);
+    await tween(e, {alpha: 0, rot: 1.4}, 380);
+    log(`☠️ ${j(e.name, '을', '를')} 쓰러뜨렸다.`);
+  } else if (e.flees && e.state === 'ok' && e.hp < e.max * 0.45 && R() < 0.6) {
+    e.state = 'fleeing'; e.fleeTurn = G.battle.turn; e.flip = false;
+    bubble(e, '끼에엑! 튀어!', 1400);
+    await tween(e, {x: e.x + 110}, 320);
+    log(`💨 ${j(e.name, '이', '가')} 도망치기 시작했다! 다음 턴이 끝나기 전에 잡지 못하면 놓친다.`);
+  }
+  await sp(120);
+}
+async function allyAct(id) {
+  const B = G.battle, u = getU(id);
+  if (id === 'player') { const e = pickTarget(); if (e) await hit(u, e, pick(['간다!', '받아라!', '하앗!'])); return; }
+  if (id === 'knight' && R() < 0.12) {
+    reveal(u, '저주');
+    const others = B.allies.filter(x => x !== 'knight' && inB(x));
+    if (others.length) {
+      const tid = pick(others), t = getU(tid), d = dmg(atkOf(u), defOf(t));
+      bubble(u, '크아아아아!', 1300); shake = 0.4;
+      await sp(350);
+      await strike(u, t, d, false, '#ff5a5a');
+      log(`😈 저주가 폭주했다! 기사가 ${t.name}에게 ${d} 피해`);
+      if (t.hp <= 0 && tid !== 'player') { B.out[tid] = 'down'; bubble(t, '왜… 우리 편이잖아…', 1500); await tween(t, {rot: -1.57}, 300); log(`💫 ${j(t.name, '이', '가')} 쓰러졌다.`); }
+      return;
+    }
+  }
+  if ((id === 'bark' || id === 'yeon') && inB('bark') && inB('yeon') && R() < 0.15) {
+    const other = getU(id === 'bark' ? 'yeon' : 'bark');
+    bubble(u, id === 'bark' ? '저 애송이 칼잡이 옆에선 못 해먹겠군' : '술주정뱅이와 같은 편이라니', 1600);
+    await sp(500); bubble(other, id === 'bark' ? '…뭐라고?' : '뭐야, 이 꼬맹이가!', 1200);
+    await sp(700);
+    log(`⚡ ${j(u.name, '이', '가')} 말다툼하느라 턴을 날렸다.`); return;
+  }
+  if (id === 'bark' && G.lodging === 0 && R() < 0.25) {
+    reveal(u, '술꾼'); bubble(u, '딸꾹… 어디 갔지?', 1300);
+    const ox = u.x; await tween(u, {x: ox + 30, rot: 0.3}, 250); await tween(u, {x: ox - 10, rot: -0.2}, 250); await tween(u, {x: ox, rot: 0}, 200);
+    log('🍺 바르크가 비틀거리다 헛손질했다.'); return;
+  }
+  if (R() < obey(u)) { const e = pickTarget(); if (e) await hit(u, e, pick(u.lines.atk)); return; }
+  if (u.aff < 30 && R() < 0.45) {
+    B.out[id] = 'fled'; u.aff = clamp(u.aff - 5, 0, 100);
+    bubble(u, pick(u.lines.flee), 1400); u.flip = true;
+    await tween(u, {x: u.x - 420, alpha: 0.25}, 600);
+    log(`🏃 ${j(u.name, '이', '가')} 명령을 무시하고 도망쳤다! (호감도 -5)`); return;
+  }
+  bubble(u, pick(u.lines.hesit), 1400);
+  const ox = u.x;
+  for (let k = 0; k < 3; k++) { await tween(u, {x: ox - 6}, 60); await tween(u, {x: ox + 4}, 60); }
+  await tween(u, {x: ox - 34}, 260);
+  log(`🙄 ${j(u.name, '이', '가')} 명령을 따르지 않았다.`);
+  await sp(250);
+  u.x = ox;
+}
+const overB = () => G.battle.enemies.every(e => e.state === 'dead' || e.state === 'escaped');
+async function doTurn(cmd) {
+  const B = G.battle;
+  {
+    for (const id of B.allies) {
+      if (overB()) break;
+      if (!inB(id)) continue;
+      await allyAct(id);
+      if (G.player.hp <= 0) { await tween(G.player, {rot: -1.57}, 300); return finishBattle('dead'); }
+    }
+  }
+  if (!overB()) {
+    for (const e of B.enemies) {
+      if (e.state === 'fleeing' && e.fleeTurn < B.turn) {
+        e.state = 'escaped'; B.escaped++; bubble(e, '메롱!', 900);
+        await tween(e, {x: e.x + 520, alpha: 0}, 520);
+        log(`💨 ${j(e.name, '을', '를')} 놓쳤다.`);
+      }
+    }
+  }
+  if (!overB()) {
+    for (const e of B.enemies) {
+      if (e.state !== 'ok') continue;
+      const tg = B.allies.filter(inB);
+      if (!tg.length) break;
+      const tid = pick(tg), t = getU(tid), d = dmg(e.atk, defOf(t));
+      await strike(e, t, d, !!e.ranged, '#ff7a7a');
+      log(`${e.icon} ${e.name} → ${t.name} ${d} 피해`);
+      if (t.hp <= 0) {
+        if (tid === 'player') { bubble(t, '여기까지인가…', 1500); await tween(t, {rot: -1.57}, 300); return finishBattle('dead'); }
+        B.out[tid] = 'down'; bubble(t, '으윽…', 1200);
+        await tween(t, {rot: -1.57}, 300);
+        log(`💫 ${j(t.name, '이', '가')} 쓰러졌다.`);
+      }
+      await sp(100);
+    }
+  }
+  if (overB()) return finishBattle('win');
+  B.turn++;
+  renderUI();
+}
+async function finishBattle(res) {
+  const B = G.battle;
+  for (const u of [G.player, ...G.party]) { if (u.hp <= 0 && u !== G.player) u.hp = 1; }
+  if (res === 'dead') return faint();
+  const loot = B.enemies.filter(e => e.state === 'dead').reduce((s, e) => s + e.loot, 0);
+  G.run.loot += loot;
+  if (B.enc.ambush) G.run.ambush = false; else G.run.cleared[G.scene].push(B.enc.i);
+  popup(G.player.x, GY - 110, `+${loot}G`, '#ffd24a');
+  log(`🏆 승리! 전리품 ${loot}G${B.escaped ? ` (놓친 적 ${B.escaped})` : ''}`);
+  const chief = B.enemies.some(e => e.type === 'chief');
+  G.battle = null;
+  for (const u of [G.player, ...G.party]) { u.rot = 0; u.flip = false; }
+  // 도망쳤던 동료가 쭈뼛쭈뼛 돌아온다
+  for (const id in B.out) { const u = getU(id); if (u && B.out[id] === 'fled') { u.alpha = 1; bubble(u, pick(['…나 왔어', '헤헤… 끝났어요?', '…']), 1600); } }
+  G.party.forEach((m, i) => { m.x = G.player.x - 74 * (i + 1); });
+  if (B.enc.ambush) { const y = getU('yeon'); if (y) { y.aff = clamp(y.aff + 6, 0, 100); bubble(y, '…빚진 걸로 하지.', 2000); } }
+  renderUI();
+  if (chief) { G.gold += G.run.loot; await sp(1200); return gameEnd('peace'); }
+}
+
+// ================= 쓰러짐 =================
+const FAINT = {yujin: [-3, '괜찮아… 다음엔 잘하자. 우리 둘이 시작했잖아.'], bark: [-10, '이런 대장 밑에선 못 해먹겠군.'],
+  yeon: [-12, '…약한 자를 따른 내 잘못이다.'], soso: [-5, '무, 무서웠어요… 또 가야 돼요?'], knight: [-5, '……약하다……']};
+async function faint() {
+  const loot = G.run ? G.run.loot : 0;
+  await sp(700);
+  G.battle = null; G.run = null;
+  log(`💫 ${j(G.player.name, '이', '가')} 이끄는 일행이 던전에서 쓰러졌다.`);
+  const where = G.lodging === 0 ? ['stable', 870, '마구간 건초 위'] : G.lodging > 0 ? ['lodge', G.lodging === 2 ? 1300 : 780, LODGING[G.lodging].name] : ['town', 2630, '뒷골목 길바닥'];
+  goScene(where[0], where[1]);
+  const ok = await advance(10);
+  if (!ok) return;
+  for (const u of [G.player, ...G.party]) u.hp = 1;
+  const lines = [];
+  for (const m of G.party) {
+    const [d, line] = FAINT[m.id];
+    m.aff = clamp(m.aff + d, 0, 100);
+    bubble(m, line, 3200);
+    lines.push(`<p>${m.icon} <b>${m.name}</b>: "${line}" <span class="dim">(호감도 ${d})</span></p>`);
+  }
+  log(`🛏️ 10일 만에 ${where[2]}에서 깨어났다. 던전 전리품 ${loot}G를 잃었다.`);
+  renderUI();
+  await modal(`<h3>정신을 차렸다</h3><p>${where[2]}에서 눈을 떴다. 누군가 우리를 끌고 나온 모양이다.</p>
+    <p>⏳ <b>10일</b>이 지났다 · 💸 이번 던전 전리품 <b>${loot}G</b>를 잃었다 · ❤️ 모두 HP 1</p>${lines.join('') || '<p class="dim">곁에 동료가 없다.</p>'}
+    <p class="dim">저장해둔 게 있다면 📂 불러오기로 되돌릴 수 있다.</p>`, [{label: '일어난다'}]);
+}
+
+// ================= 저장 =================
+const SAVE_KEY = 'sanggyeong_saves_v1';
+let memSaves = null, storageOk = true;
+function readSaves() {
+  try { const r = localStorage.getItem(SAVE_KEY); return r ? JSON.parse(r) : [null, null, null]; }
+  catch (e) { storageOk = false; return memSaves || (memSaves = [null, null, null]); }
+}
+function writeSaves(a) {
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(a)); return true; }
+  catch (e) { storageOk = false; memSaves = a; return false; }
+}
+const packU = u => ({...u, bubble: null, bubbleUntil: 0, moving: false, contract: u.contract === Infinity ? 'INF' : u.contract});
+function snapshot() {
+  return JSON.parse(JSON.stringify({v: 1, at: Date.now(), day: G.day, gold: G.gold, lodging: G.lodging, player: packU(G.player),
+    party: G.party.map(packU), gone: G.gone, master: G.master, log: G.log.slice(0, 40), scene: G.scene, potions: G.potions,
+    gifts: G.gifts, weapon: G.weapon, coins: G.coins, alleyDay: G.alleyDay, renewals: G.renewals}));
+}
+function restore(d) {
+  const unpack = u => ({...u, rot: 0, alpha: 1, contract: u.contract === 'INF' ? Infinity : u.contract});
+  G = {...fresh(), day: d.day, gold: d.gold, lodging: d.lodging, player: unpack(d.player), party: d.party.map(unpack), gone: d.gone || {},
+    master: d.master, log: d.log || [], potions: d.potions, gifts: d.gifts, weapon: d.weapon, coins: d.coins || [], alleyDay: d.alleyDay,
+    renewals: d.renewals || [], phase: 'world'};
+  for (const m of G.party) m.lines = TEMPLATES[m.id].lines;
+  G.player.lines = {atk: ['간다!', '받아라!']};
+  for (const k in SPST) delete SPST[k];
+  goScene(d.scene, d.player.x);
+}
+const slotLabel = (x, i) => x ? `슬롯 ${i + 1} · ${Math.floor(x.day / 30) + 1}월 ${x.day % 30 + 1}일 · Lv.${x.player.lvl} · ${x.gold}G · ${[x.player.name, ...x.party.map(m => m.name)].join(', ')}` : `슬롯 ${i + 1} · 비어 있음`;
+async function saveGame() {
+  if (isDungeon() || G.battle) { await modal('<p>던전 안에서는 저장할 수 없다. 층을 끝내고 마을로 돌아와서 저장하자.</p>', [{label: '확인'}]); return; }
+  const sv = readSaves();
+  const i = await modal('<h3>저장</h3><p>어느 슬롯에 저장할까?</p>', [...sv.map((x, i) => ({label: (x ? '덮어쓰기 · ' : '') + slotLabel(x, i), value: i})), {label: '그만둔다', value: null, cls: 'ghost'}]);
+  if (i === null || i === undefined) return;
+  sv[i] = snapshot();
+  const ok = writeSaves(sv);
+  log(`💾 슬롯 ${i + 1}에 저장했다.${ok ? '' : ' (이 브라우저에선 새로고침하면 사라진다)'}`);
+}
+async function loadGame() {
+  const sv = readSaves();
+  if (!sv.some(Boolean)) { await modal('<p>저장된 기록이 없다.</p>', [{label: '확인'}]); return; }
+  const i = await modal(`<h3>불러오기</h3><p>어느 기록으로 돌아갈까?${G.phase === 'world' ? ' 지금 진행 중인 내용은 사라진다.' : ''}</p>`,
+    [...sv.map((x, i) => ({label: slotLabel(x, i), value: i, disabled: !x})), {label: '그만둔다', value: null, cls: 'ghost'}]);
+  if (i === null || i === undefined) return;
+  restore(sv[i]);
+  log(`📂 슬롯 ${i + 1}을 불러왔다.`);
+}
+
+// ================= 엔딩 =================
+function gameEnd(type) { G.ending = type; G.phase = 'ending'; G.battle = null; renderUI(); }
+function endingView() {
+  const T = {peace: ['🕊️ 평화', '고블린 족장이 쓰러지고, 도시에 평화가 찾아왔다.'],
+    timeout: ['⌛ 시간 초과', '1년이 지났다. 도시는 여전히 고블린에게 시달린다.'],
+    dead: ['💀 게임 오버', `${j(G.player.name, '이', '가')} 던전에서 쓰러졌다.`]}[G.ending];
+  const mates = G.party.map(m => `<li>${m.icon} <b>${m.name}</b> — 호감도 ${m.aff} · ${m.traits.filter(t => t.shown).map(t => t.n).join(', ')}</li>`).join('') || '<li class="dim">곁에 남은 동료가 없다.</li>';
+  const gone = Object.keys(G.gone).map(id => `${TEMPLATES[id].icon} ${TEMPLATES[id].name}`).join(', ');
+  const dex = [];
+  if (G.ending === 'peace') dex.push(`📖 직업 도감 등록: <b>${G.player.job}</b> · 평화`);
+  if (G.master) dex.push(`📖 스승 도감 등록: <b>${G.master}</b>`);
+  return `<div class="ending"><h1>${T[0]}</h1><p>${T[1]}</p><p class="dim">${dateStr()} · ${G.day}일 경과 · Lv.${G.player.lvl} · ${G.gold}G</p>
+    <ul>${mates}</ul>${gone ? `<p class="dim">떠나간 사람: ${gone}</p>` : ''}${dex.map(d => `<p>${d}</p>`).join('')}
+    <button class="big" data-act="restart">처음부터 다시</button></div>`;
+}
+
+// ================= 그리기 =================
+const EMO = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+function emoji(ch, x, y, size, flip, rot, alpha) {
+  ctx.save(); ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.translate(x, y);
+  if (rot) { ctx.translate(0, -size * 0.4); ctx.rotate(rot); ctx.translate(0, size * 0.4); }
+  if (flip) ctx.scale(-1, 1);
+  ctx.font = `${size}px ${EMO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.fillStyle = '#000';
+  ctx.fillText(ch, 0, 0); ctx.restore();
+}
+function txt(s, x, y, size, color, align = 'center', weight = 500) {
+  ctx.font = `${weight} ${size}px G11,sans-serif`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, x, y);
+}
+function rr(x, y, w, h, r, fill, stroke) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.stroke(); }
+}
+const X = wx => wx - camX;
+function rect(wx, y, w, h, c) { ctx.fillStyle = c; ctx.fillRect(Math.round(X(wx)), y, w, h); }
+function sky(c1, c2) { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, c1); g.addColorStop(1, c2); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
+function door(wx, w = 54, h = 86, c = '#2b1b10') { rr(X(wx) - w / 2, GY - h, w, h, 6, c, '#000'); ctx.fillStyle = '#d9a441'; ctx.beginPath(); ctx.arc(X(wx) + w / 2 - 10, GY - h / 2, 3, 0, 7); ctx.fill(); }
+function interiorBase(wall, floor, trim) {
+  ctx.fillStyle = wall; ctx.fillRect(0, 0, W, GY);
+  ctx.fillStyle = trim; ctx.fillRect(0, GY - 14, W, 14);
+  ctx.fillStyle = floor; ctx.fillRect(0, GY, W, H - GY);
+  ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 1;
+  for (let x = -(camX % 60); x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, GY); ctx.lineTo(x, H); ctx.stroke(); }
+}
+const ROOMNAME = {tavern: '술집 「취한 드워프」', inn: '객잔 「청풍」', shop: '잡화점', train: '수련장', lodge: '여관', stable: '마구간'};
+const COINI = new Image(); COINI.src = ICON.coin;
+const BGI = {}; for (const k in BGART) { BGI[k] = new Image(); BGI[k].src = BGART[k]; }
+function drawArt(key) {
+  const im = BGI[key]; if (!im || !im.complete) { ctx.fillStyle = '#2a1d18'; ctx.fillRect(0, 0, W, H); return; }
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(im, -Math.round(camX), 0, im.width * PX, im.height * PX);
+}
+function pin(x, y) { txt('▼', x, y + Math.sin(tnow / 250) * 4, 26, '#f2c14e', 'center', 400); }
+function drawTown() {
+  const winter = Math.floor(G.day / 30) >= 9;
+  drawArt('town');
+  if (winter) {
+    ctx.fillStyle = 'rgba(150,175,215,.28)'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,.8)'; for (let i = 0; i < 60; i++) { const sx = (i * 97 + tnow * 0.02 * (1 + i % 3)) % W, sy = (i * 53 + tnow * 0.05) % GY; ctx.fillRect(Math.round(sx / 4) * 4, Math.round(sy / 4) * 4, 4, 4); }
+  }
+}
+function drawInterior(s) {
+  if (s === 'tavern' || s === 'inn' || s === 'shop') {
+    drawArt(s);
+  } else if (s === 'lodge') {
+    drawArt('lodge');
+    if (G.lodging === 1) { pin(X(800), GY - 64, 26); txt('우리 방', X(800), GY - 96, 13, '#f2c46d', 'center', 700); }
+    if (G.lodging === 2) { pin(X(1320), GY - 100, 26); txt('우리 방', X(1320), GY - 132, 13, '#f2c46d', 'center', 700); }
+  } else if (s === 'stable') {
+    drawArt('stable');
+    if (G.lodging === 0) { pin(X(870), GY - 40, 26); txt('우리 잠자리', X(870), GY - 72, 13, '#f2c46d', 'center', 700); }
+  } else if (s === 'train') {
+    drawArt('train');
+  }
+  txt('출구', X(70), GY - 118, 12, '#e8d6b8');
+}
+function drawCave(s) {
+  drawArt(s);
+  // 횃불 일렁임
+  const fl = Math.sin(tnow / 90) * 0.5 + Math.sin(tnow / 37) * 0.5;
+  ctx.fillStyle = `rgba(255,150,60,${0.03 + fl * 0.02})`; ctx.fillRect(0, 0, W, H);
+  txt('출구', X(80), GY - 136, 14, '#e8d6b8', 'center', 400);
+  if (s !== 'd3') txt('아래층', X(SC[s].w - 110), GY - 20, 14, '#a8998a', 'center', 400);
+  // 남은 적 (전투 전)
+  if (!G.battle) for (const e of encounters()) e.t.forEach((t, i) => { const E = ENEMIES[t]; const k = ENEMY_SPR[t]; const ex = X(e.x + 40 + i * 84); if (k) { ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(ex, GY + 2, 22, 5, 0, 0, 7); ctx.fill(); sprDraw(k, ex, true, false, 0, 1, E.big); } else emoji(E.icon, ex, GY, E.big ? 96 : 64, true); });
+  const knightHere = specials().find(p => p.chained);
+  if (knightHere) { ctx.strokeStyle = '#8a8a92'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(X(1878), 124); ctx.lineTo(X(1888), GY - 60); ctx.moveTo(X(1942), 124); ctx.lineTo(X(1912), GY - 60); ctx.stroke(); }
+}
+function drawBubble(o, x, y) {
+  if (!o.bubble || tnow > o.bubbleUntil) return;
+  ctx.font = '500 13px G11,sans-serif';
+  const words = o.bubble; const maxW = 180;
+  const lines = []; let cur = '';
+  for (const ch of words) { if (ctx.measureText(cur + ch).width > maxW) { lines.push(cur); cur = ch; } else cur += ch; }
+  lines.push(cur);
+  const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 16, h = lines.length * 17 + 10;
+  const bx = clamp(x - w / 2, 4, W - w - 4), by = y - h - 10;
+  rr(bx, by, w, h, 0, '#f6e3b4', '#5a2a12');
+  ctx.fillStyle = '#f6e3b4'; ctx.beginPath(); ctx.moveTo(x - 6, by + h - 1); ctx.lineTo(x + 6, by + h - 1); ctx.lineTo(x, by + h + 8); ctx.fill();
+  lines.forEach((l, i) => txt(l, bx + w / 2, by + 20 + i * 17, 13, '#2a1d12'));
+}
+const SPI = {};
+for (const k in SPRITES) {
+  const o = SPI[k] = {idle: [], run: [], top: 0, bot: 28};
+  for (const m of ['idle', 'run']) SPRITES[k][m].forEach((src, i) => { const im = new Image(); im.src = src; o[m].push(im);
+    if (m === 'idle' && i === 0) im.onload = () => { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0);
+      const d = g.getImageData(0, 0, im.width, im.height).data; let t = im.height, b = 0;
+      for (let y = 0; y < im.height; y++) for (let x = 0; x < im.width; x++) if (d[(y * im.width + x) * 4 + 3] > 0) { t = Math.min(t, y); b = Math.max(b, y + 1); }
+      o.top = t; o.bot = b; }; });
+}
+const ENEMY_SPR = {goblin: 'goblin', archer: 'goblin_archer', chief: 'ogre', assassin: 'masked', wolf: 'wolf'};
+function sprKey(u) { if (!u) return null; const k = u.spr || (u.type && ENEMY_SPR[u.type]) || u.id; return k && SPI[k] ? k : null; }
+function sprH(k) { const S = SPI[k]; return (S.bot - S.top) * PX; }
+function sprDraw(k, x, flip, walk, rot, alpha, big) {
+  const S = SPI[k], fr = walk ? S.run : S.idle, im = fr[Math.floor(tnow / (walk ? 100 : 160)) % fr.length];
+  if (!im || !im.complete) return;
+  const sc = PX * (big ? 1.5 : 1);
+  ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.translate(Math.round(x), GY);
+  const h = (S.bot - S.top) * sc;
+  if (rot) { ctx.translate(0, -h * 0.4); ctx.rotate(rot); ctx.translate(0, h * 0.4); }
+  if (flip) ctx.scale(-1, 1);
+  ctx.drawImage(im, Math.round(-im.width * sc / 2), Math.round(-S.bot * sc + sc), im.width * sc, im.height * sc);
+  ctx.restore();
+}
+function headY(u, def) { const k = sprKey(u); return k ? GY - sprH(k) * (u.big ? 1.5 : 1) - 6 : def; }
+function drawActor(u, size, opts = {}) {
+  const k = sprKey(u);
+  if (k) {
+    const x = X(u.x); if (x < -100 || x > W + 100) return;
+    const sz = sprH(k) * (u.big ? 1.5 : 1);
+    ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, GY + 2, sz * 0.3, 5, 0, 0, 7); ctx.fill();
+    sprDraw(k, x, u.flip, opts.walk, u.rot, u.alpha, u.big);
+    if (u.hurt && tnow < u.hurt) { ctx.fillStyle = 'rgba(255,60,60,.35)'; ctx.beginPath(); ctx.arc(x, GY - sz * 0.5, sz * 0.45, 0, 7); ctx.fill(); }
+    if (opts.name) txt(opts.name, x, GY + 20, 12, opts.nameColor || '#efe6d6', 'center', 700);
+    if (opts.hp) { const p = clamp(u.hp / opts.max, 0, 1); rr(x - 26, GY - sz - 14, 52, 6, 3, '#15110e'); if (p > 0) rr(x - 26, GY - sz - 14, 52 * p, 6, 3, opts.enemy ? '#d9534f' : '#5fbf5f'); }
+    if (opts.tag) txt(opts.tag, x, GY - sz - 20, 11, '#f2c46d', 'center', 700);
+    return;
+  }
+  size = Math.round(size * 1.5);
+  const x = X(u.x);
+  if (x < -80 || x > W + 80) return;
+  const bob = opts.walk ? Math.abs(Math.sin(tnow / 110)) * -4 : 0;
+  ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, GY + 2, size * 0.38, 5, 0, 0, 7); ctx.fill();
+  if (u.hurt && tnow < u.hurt) { ctx.fillStyle = 'rgba(255,60,60,.45)'; ctx.beginPath(); ctx.arc(x, GY - size * 0.5, size * 0.55, 0, 7); ctx.fill(); }
+  emoji(u.icon, x, GY + bob, size, u.flip, u.rot, u.alpha);
+  if (opts.name) txt(opts.name, x, GY + 18, 11.5, opts.nameColor || '#efe6d6');
+  if (opts.hp) { const p = clamp(u.hp / opts.max, 0, 1); rr(x - 26, GY - size - 12, 52, 6, 3, '#15110e'); if (p > 0) rr(x - 26, GY - size - 12, 52 * p, 6, 3, opts.enemy ? '#d9534f' : '#5fbf5f'); }
+  if (opts.tag) txt(opts.tag, x, GY - size - 18, 11, '#f2c46d', 'center', 700);
+}
+function draw() {
+  ctx.save();
+  if (shake > 0) ctx.translate((R() - 0.5) * 10 * shake, (R() - 0.5) * 8 * shake);
+  const s = G.scene;
+  if (s === 'town') drawTown(); else if (FLOORS[s]) drawCave(s); else drawInterior(s);
+  // 동전
+  if (s === 'town') for (const c of G.coins) { const im = COINI; if (im.complete) { ctx.imageSmoothingEnabled = false; ctx.drawImage(im, Math.round(X(c.x) - 16), Math.round(GY - 34 + Math.sin(tnow / 200 + c.x) * 3), 32, 32); } }
+  // NPC
+  for (const n of npcs(s)) { if (!n.hidden) drawActor(n, 40, {name: n.name, nameColor: '#cbb9a3', walk: n.moving}); drawBubble(n, X(n.x), n.hidden ? GY - 150 : headY(n, GY - 66)); }
+  for (const p of specials()) {
+    const o = specialState(p.id); o.x = p.x; o.icon = p.icon; o.spr = p.id === 'beggar' ? 'oldman' : p.id;
+    drawActor(o, 42, {name: p.name, nameColor: '#f2c46d'});
+    drawBubble(o, X(p.x), headY(o, GY - 68));
+  }
+  // 적
+  if (G.battle) for (const e of G.battle.enemies) {
+    if (e.state === 'escaped' && e.alpha <= 0.02) continue;
+    drawActor(e, e.big ? 66 : 44, {name: e.name, hp: true, max: e.max, enemy: true, tag: e.state === 'fleeing' ? '도망 중!' : ''});
+    drawBubble(e, X(e.x), headY(e, GY - (e.big ? 110 : 76)));
+  }
+  // 파티
+  const B = G.battle;
+  [...G.party].reverse().forEach(m => {
+    const tag = B ? (B.out[m.id] === 'fled' ? '도망' : B.out[m.id] === 'down' ? '쓰러짐' : '') : '';
+    drawActor(m, 42, {name: m.name, walk: m.moving, hp: !!B, max: maxHp(m), tag});
+    drawBubble(m, X(m.x), headY(m, GY - 72));
+  });
+  if (G.player) {
+    drawActor(G.player, 44, {name: G.player.name, nameColor: '#f2c46d', walk: G.player.moving, hp: !!B, max: maxHp(G.player)});
+    drawBubble(G.player, X(G.player.x), headY(G.player, GY - 74));
+  }
+  for (const p of projs) { ctx.strokeStyle = '#f2e6c8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(p.x) - 14, p.y); ctx.lineTo(X(p.x) + 14, p.y); ctx.stroke(); emoji('✨', X(p.x) + 14, p.y + 8, 14); }
+  for (const p of popups) { ctx.globalAlpha = 1 - p.t; txt(p.text, X(p.x), p.y - p.t * 40, 20, p.color, 'center', 700); ctx.globalAlpha = 1; }
+  // 상호작용 안내
+  if (!G.battle && !G.lock && !modalOpen && G.phase === 'world') {
+    const it = nearest();
+    if (it) {
+      const label = `Space  ${it.label}`;
+      ctx.font = '700 13px G11,sans-serif';
+      const w = ctx.measureText(label).width + 20, x = clamp(X(it.x) - w / 2, 6, W - w - 6);
+      rr(x, GY - 212, w, 30, 0, '#e3a35c', '#5a2a12'); txt(label, x + w / 2, GY - 192, 14, '#3a1a0a', 'center', 400);
+    }
+  }
+  if (s !== 'town' && !FLOORS[s]) { const nm = ROOMNAME[s] || SC[s].name; ctx.font = '400 18px G11,sans-serif'; const w = ctx.measureText(nm).width + 28; rr(W / 2 - w / 2, 14, w, 34, 0, '#e3a35c', '#5a2a12'); txt(nm, W / 2, 38, 18, '#3a1a0a', 'center', 400); }
+  ctx.restore();
+}
+const SPST = {};
+function specialState(id) { return (SPST[id] = SPST[id] || {x: 0, icon: '', next: 2 + R() * 5}); }
+function nearest() {
+  if (!G.player) return null;
+  let best = null, bd = 64;
+  for (const it of interactables()) { const d = Math.abs(it.x - G.player.x); if (d < bd) { bd = d; best = it; } }
+  return best;
+}
+
+// ================= 업데이트 =================
+function update(dt) {
+  tnow += dt * 1000;
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i]; tw.t += dt * 1000;
+    const p = Math.min(1, tw.t / tw.ms), e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+    for (const k in tw.to) tw.o[k] = tw.from[k] + (tw.to[k] - tw.from[k]) * e;
+    if (p >= 1) { tweens.splice(i, 1); tw.res(); }
+  }
+  for (let i = popups.length - 1; i >= 0; i--) { popups[i].t += dt * 1.1; if (popups[i].t >= 1) popups.splice(i, 1); }
+  if (shake > 0) shake = Math.max(0, shake - dt);
+  if (G.phase !== 'world' || !G.player) return;
+  const s = G.scene, P = G.player, sw = SC[s].w;
+  // NPC 배회 + 혼잣말
+  for (const n of npcs(s)) {
+    n.moving = false;
+    if (n.range > 0) {
+      n.wait -= dt;
+      if (n.wait <= 0) { n.target = n.home + (R() * 2 - 1) * n.range; n.wait = 2 + R() * 4; }
+      if (n.target != null && Math.abs(n.target - n.x) > 3) { const d = Math.sign(n.target - n.x); n.x += d * 45 * dt; n.flip = d < 0; n.moving = true; }
+    }
+    n.next -= dt;
+    if (n.next <= 0) { n.next = 5 + R() * 8; if (Math.abs(n.x - P.x) < 500) bubble(n, pick(n.lines), 2200); }
+  }
+  for (const p of specials()) { const o = specialState(p.id); o.next -= dt; if (o.next <= 0) { o.next = 6 + R() * 6; if (Math.abs(p.x - P.x) < 450) bubble(o, pick(SPECIAL_LINES[p.id]), 2200); } }
+  // 이동
+  const canMove = !G.battle && !G.lock && !modalOpen && !menuOpen;
+  let dir = 0;
+  const dun = !!FLOORS[s] && !!G.run;
+  if (canMove && !dun) { if (keys.left) dir -= 1; if (keys.right) dir += 1; }
+  if (canMove && dun) {
+    const stairsX = sw - 110;
+    if (s === 'd2' && !G.run.knightAsked && !has('knight') && !G.gone.knight && P.x >= 1860) { G.run.knightAsked = true; runAct(knightEvent); }
+    else if (P.x < stairsX || s === 'd3') dir = 1;
+    else if (!G.run.atStairs && encounters().length === 0) { G.run.atStairs = true; runAct(stairsPrompt); }
+  }
+  P.moving = dir !== 0;
+  if (dir) { P.x = clamp(P.x + dir * (dun ? 250 : 230) * dt, 30, s === 'd3' ? 1300 : sw - 30); P.flip = dir < 0; }
+  // 동료 따라오기
+  if (!G.battle) {
+    let leader = P;
+    G.party.forEach((m, i) => {
+      const behind = leader.flip ? 74 : -74;
+      const target = clamp(leader.x + behind, 20, sw - 20);
+      const d = target - m.x;
+      m.moving = Math.abs(d) > 6;
+      if (m.moving) { m.x += Math.sign(d) * Math.min(Math.abs(d), (Math.abs(d) > 120 ? 330 : 225) * dt); m.flip = d < 0; }
+      if (m.rot) m.rot = 0;
+      leader = m;
+    });
+    // 가끔 동료 혼잣말
+    G.idleT = (G.idleT || 8) - dt;
+    if (G.idleT <= 0 && G.party.length) {
+      G.idleT = 9 + R() * 9;
+      const m = pick(G.party);
+      const pool = (s === 'tavern' || s === 'inn') && m.lines.bar ? m.lines.bar : m.lines.idle;
+      if (G.lodging < 0 && has('yujin') && R() < 0.6) bubble(getU('yujin'), pick(['오늘 밤 어디서 자? 여관 가볼까?', '마구간은 공짜래…', '길에서 자긴 싫어!']), 2600);
+      else if (s === 'stable' && G.lodging === 0) bubble(m, pick(m.id === 'soso' ? ['여기 따뜻해요!'] : m.id === 'yeon' ? ['…말똥 냄새', '정말 여기서 자라고?'] : ['으, 냄새…', '건초가 따가워']), 2400);
+      else if (s === 'lodge' && P.x > 1018) bubble(m, pick(['와… 침대 봐!', '우리도 여기서 자면 안 돼?', '부자들은 좋겠다']), 2400);
+      else bubble(m, pick(pool), 2400);
+    }
+  }
+  camX = clamp(P.x - W / 2, 0, Math.max(0, sw - W));
+  if (G.battle) {
+    const xs = [P.x, ...G.battle.enemies.map(e => e.x)];
+    camX = clamp((Math.min(...xs) + Math.max(...xs)) / 2 - W / 2 + 40, 0, Math.max(0, sw - W));
+  }
+  // 동전 줍기
+  if (s === 'town') {
+    for (const c of [...G.coins]) if (Math.abs(c.x - P.x) < 20) { G.coins.splice(G.coins.indexOf(c), 1); G.gold += c.v; popup(c.x, GY - 70, `+${c.v}G`, '#ffd24a'); log(`🪙 골목에서 동전 ${c.v}G를 주웠다.`); renderHUD(); }
+    if (P.x > 2392 && P.x < 2696) alleyCheck();
+  }
+  // 던전 조우
+  if (FLOORS[s] && !G.battle && !G.lock && !modalOpen && G.run) {
+    for (const e of encounters()) if (P.x > e.x - 150 && P.x < e.x + 260) { startBattle(e); break; }
+  }
+}
+let lastT = 0;
+function loop(t) {
+  const dt = Math.min(0.05, (t - lastT) / 1000 || 0.016); lastT = t;
+  try { update(dt); draw(); } catch (err) { console.error(err); }
+  requestAnimationFrame(loop);
+}
+
+// ================= 입력 =================
+const KL = {ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right'};
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (KL[e.key]) { keys[KL[e.key]] = true; e.preventDefault(); }
+  if ((e.key === ' ' || e.key === 'ArrowUp' || e.key === 'e' || e.key === 'E' || e.key === 'Enter') && !e.repeat) {
+    if (modalOpen) { if (e.key === 'ArrowUp') modalMove(-1); else modalPick(); e.preventDefault(); return; }
+    e.preventDefault(); useAction();
+  }
+});
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  if (modalOpen) { if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') { modalMove(1); e.preventDefault(); } if (e.key === 'w' || e.key === 'W') modalMove(-1); if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight')) e.preventDefault(); return; }
+  if (e.key === 'Escape' || e.key === 'Tab' || e.key === 'i' || e.key === 'I') { e.preventDefault(); if (menuOpen) closeMenu(); else openMenu(e.key === 'i' || e.key === 'I' ? 'party' : null); return; }
+  if (menuOpen) return;
+  if (e.key === '1' && G.phase === 'world' && !G.lock && !G.battle && G.potions) runAct(ACT.usePotion);
+  if (e.key === '2' && G.phase === 'world' && !G.lock && !G.battle && G.gifts && G.party.length) runAct(ACT.giveGift);
+});
+addEventListener('keyup', e => { if (KL[e.key]) keys[KL[e.key]] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+function useAction() {
+  if (G.phase !== 'world' || G.lock || modalOpen || menuOpen) return;
+  if (G.battle) { runAct(ACT.cmd, 'attack'); return; }
+  const it = nearest(); if (!it) return;
+  runAct(it.fn);
+}
+for (const b of document.querySelectorAll('[data-hold]')) {
+  const k = b.dataset.hold;
+  b.addEventListener('pointerdown', e => { keys[k] = true; e.preventDefault(); });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => { keys[k] = false; });
+}
+document.querySelector('[data-tap="use"]').addEventListener('click', useAction);
+function runAct(fn, arg) {
+  if (G.lock) return;
+  G.lock = true; renderUI();
+  Promise.resolve().then(() => fn(arg)).catch(err => { console.error(err); log('⚠️ 오류: ' + err.message); })
+    .finally(() => { G.lock = false; renderUI(); });
+}
+const ACT = {
+  job(a) { G.introJob = a; },
+  async start() {
+    const name = (G.introName || '').trim() || '도윤';
+    const Wr = G.introJob === '전사';
+    G.player = {id: 'player', name, icon: '🧑', job: G.introJob, lvl: 1, bhp: Wr ? 50 : 38, hpg: Wr ? 6 : 4, batk: Wr ? 9 : 11, atkg: Wr ? 1.5 : 1.9,
+      bdef: Wr ? 4 : 2, defg: Wr ? 0.5 : 0.3, bHp: 0, bAtk: 0, bDef: 0, hp: 0, traits: [], x: 560, rot: 0, alpha: 1, flip: false,
+      lines: {atk: ['간다!', '받아라!']}};
+    G.player.hp = maxHp(G.player);
+    G.party = [newMember('yujin')];
+    G.phase = 'world';
+    goScene('town', 420);
+    spawnCoins();
+    await sleep(300);
+    bubble(getU('yujin'), `${name}, 우리 진짜 왔다!`, 2600);
+    await modal(`<h3>첫날</h3>${talkHtml(TEMPLATES.yujin, `"${esc(name)}, 우리 진짜 왔다! 근데… 오늘 밤 어디서 자?"`)}
+      <p>상경 자금은 <b>100골드</b>. 동료를 오래 고용할수록 숙소는 허름해지고, 숙소를 좋게 잡을수록 고용할 돈은 줄어든다.</p>
+      <p>먼저 <b>오늘 밤 묵을 곳</b>을 찾아야 한다. 바로 옆 여관에는 일반실과 고급실이, 그 옆엔 공짜 마구간이 있다. 직접 들어가서 보고 침대(건초) 앞에서 정하자.</p>
+      <p class="dim">← → 로 걷고, 문이나 사람·침대 앞에서 Space를 누른다.</p>`, [{label: '둘러보러 가자'}]);
+    log('🌙 아직 묵을 곳이 없다. 여관(일반실·고급실)이나 마구간을 둘러보고 정하자.');
+    log('🧭 술집·객잔·뒷골목에서 동료를 고용할 수 있다. 던전은 성문 밖 동쪽 끝에 있다.');
+    bubble(getU('yujin'), '여관이랑 마구간, 둘 다 구경해 보자!', 2800);
+  },
+  async cmd(c) { if (G.battle) await doTurn(c); },
+  menu() {},
+  async dismiss(id) {
+    const m = getU(id); if (!m) return;
+    const ok = await modal(`<p>${j(m.name, '을', '를')} 파티에서 보낼까?</p><p class="dim">${id === 'yujin' ? '유진은 고향으로 돌아가고, 다시 돌아오지 않는다.' : '남은 계약금은 돌려받지 못한다.'}</p>`,
+      [{label: '보낸다', value: true}, {label: '그만둔다', value: false, cls: 'ghost'}]);
+    if (!ok) return;
+    if (id === 'yujin') leave(m, '고향으로 돌아갔다. "…잘 지내."', true);
+    else leave(m, '파티를 떠났다.', id === 'knight');
+  },
+  usePotion, giveGift,
+  async save() { closeMenu(true); await saveGame(); },
+  async load() { closeMenu(true); await loadGame(); },
+  restart() { G = fresh(); for (const k in SPST) delete SPST[k]; }
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]');
+  if (!b || b.disabled) return;
+  const f = ACT[b.dataset.act]; if (!f) return;
+  if (G.lock) return;
+  if (b.dataset.act === 'job') { f(b.dataset.arg); renderUI(); return; }
+  if (b.dataset.act === 'menu') { const a = b.dataset.arg; if (a === 'close') closeMenu(); else if (menuOpen && !b.closest('#hud')) { menuTab = a; renderMenu(); } else if (menuOpen) closeMenu(); else openMenu(a); return; }
+  if (b.closest('#menu') && b.dataset.act === 'dismiss') closeMenu(true);
+  runAct(f, b.dataset.arg);
+});
+function fit() { const k = Math.min(innerWidth / 960, innerHeight / 600); $('#stage').style.transform = `scale(${k})`; }
+addEventListener('resize', fit); fit();
+renderUI();
+(function waitImgs(n) { const ok = Object.values(SPI).every(o => o.idle[0].complete); if (ok || n > 60) { for (const k in PORT) delete PORT[k]; renderUI(); } else setTimeout(() => waitImgs(n + 1), 80); })(0);
+document.fonts && document.fonts.load('20px G11').then(() => renderUI());
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

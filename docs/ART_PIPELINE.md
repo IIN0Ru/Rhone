@@ -1,0 +1,69 @@
+# 아트 파이프라인
+
+## 현재 (프로토타입 v9)
+- 캐릭터·몬스터: **0x72 DungeonTileset II (CC0)** 원본 + 색 바꾼 변형(farmer, kid, barkeep, innkeep, shopkeep, goblin_archer)
+- 늑대, 거리, 실내 6곳, 던전 3층: `tools/pixel/*.py` 로 **코드로 직접 찍음** (PIL)
+- 화면 배율 ×4, 캐릭터 실제 크기 약 16×20px
+- UI 아이콘: 0x72 (코인, 하트, 물약, 상자), 폰트: 갈무리11 (OFL)
+
+**이건 임시다.** 정식 아트는 아래 PixelLab 규격으로 전부 교체한다.
+
+## 정식 규격 (확정: 2026-11-17)
+| 항목 | 규격 |
+|---|---|
+| 캐릭터 캔버스 | **32×40**, 발이 맨 아래 줄 |
+| 시점 | **측면, 오른쪽 보기** (왼쪽은 코드에서 좌우 반전) |
+| 화면 배율 | ×3 (예정) |
+| 외곽선 | 단색 진한 외곽선 |
+| 광원 | 왼쪽 위 |
+| 팔레트 | 캐릭터당 12~16색 내외, 노을 배경과 어울리는 따뜻한 톤 |
+| 무기 | 몸과 분리 (허리에 차는 형태) — 장비 교체 대비 |
+| 초상화 | 64×64, 표정 4종 |
+| 아이콘 | 32×32 |
+
+## PixelLab 사용법
+
+### 연결 방식
+1. 웹(pixellab.ai)에서 생성 → 투명 PNG로 받아 이 저장소 `assets/` 에 넣기 (가장 확실)
+2. MCP: 서버 `https://api.pixellab.ai/mcp`, Bearer 토큰 인증. Claude Code: 
+   `claude mcp add pixellab https://api.pixellab.ai/mcp -t http -H "Authorization: Bearer <TOKEN>"`
+   (claude.ai 커스텀 커넥터는 OAuth 방식이라 동작 여부 미확인)
+   - ⚠️ 토큰을 채팅·커밋에 절대 넣지 않는다.
+- 요금: Tier 1 $12/월로 시작, 400×400·Instant Character 등이 필요하면 Tier 2.
+
+### 작업 순서
+도윤(스타일 기준) → 파티원 → 애니메이션 → 초상화 → 몬스터 → 아이콘 → 배경. 
+**스타일 기준 이미지 1장을 모든 생성의 style reference로 쓴다.**
+
+### 도윤 프롬프트 (기본형)
+```
+pixel art game sprite, side view facing right, full body standing idle,
+young male swordsman from the countryside, messy brown hair,
+cream linen shirt, brown leather vest, blue trousers, brown boots,
+short sword in scabbard at left hip, friendly determined face,
+dark outline, light from top-left, limited palette, transparent background
+```
+negative: `front view, top-down, background, ground shadow, text, blurry, anti-aliasing`
+
+설정: 캔버스 32×40 · view side · direction east · outline single color · shading basic~medium · detail medium · 투명 배경.
+측면이 잘 안 나오면 8방향 Pro 도구의 side view에서 east 프레임만 사용.
+
+### 고르는 기준
+1. 실루엣만으로 사람으로 읽히는가
+2. 얼굴·몸 방향이 모두 오른쪽인가
+3. 발이 캔버스 맨 아래인가
+4. 색 수가 과하지 않은가
+5. 실제 배율(×3)에서 얼굴·조끼가 구분되는가
+→ 후보는 반드시 **게임 화면에 세워서** 비교한다.
+
+### 파일 규칙
+- 투명 PNG, 애니메이션은 **가로 1줄 스프라이트시트**
+- 이름: `<캐릭터>_<동작>_<프레임수>f.png` 예) `doyun_walk_6f.png`, `yujin_portrait_happy.png`
+- 같은 캐릭터의 모든 프레임은 같은 캔버스 크기
+- 원본은 `assets/`, 게임에 넣는 묶음(base64 JS 등)은 빌드 단계에서 생성
+
+## 수작업 보정
+AI 결과물은 손 모양, 프레임 간 픽셀 흔들림, 팔레트 오염이 생긴다. 에셋당 5~15분 보정 예상 (PixelLab 웹 에디터/Aseprite).
+
+## 코드 도트 스크립트 (tools/pixel)
+`pixlib.py`(공통 도형·벽·창문·간판 함수) 위에 `street2.py`(거리), `interiors.py`(여관·마구간), `interiors2.py`(술집·객잔·잡화점·수련장), `dungeon.py`(던전 3층 + 늑대). 출력 경로가 `/home/claude/pix/` 로 하드코딩되어 있으니 쓸 때 바꿀 것. PixelLab 전환 후에는 참고용.

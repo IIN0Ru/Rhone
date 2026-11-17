@@ -72,6 +72,9 @@ claude.ai 커넥터(PixelLab)는 연결됨. 하지만 클라우드 작업 공간
 ### 도윤 1차 후보 (2026-11-17)
 v3 · view side · 48px · east 방향. `assets/pixellab/candidates/` (A: 디테일↑ 48색, B: 중간 54색, C: 플랫·외곽선 강함 38색). 실제 인물 높이 약 45px → 규격 32×40보다 큼. 비교 이미지 `doyun_candidates.png`.
 
+### 도윤 2차: v1 기반 (2026-11-17)
+`now_variants.png`(now→v1~v3 늘리기) → v1 채택. v1을 32×32로 패딩해 `create_image_pixflux` img2img(1회)로 재디자인: strength 150 = pl1(기획 의상 반영, 비율 유지), 260 = pl2(거의 안 바뀜), 110 = pl3(비율 붕괴). 비교 `v1_pixellab.png`.
+
 ## 수작업 보정
 AI 결과물은 손 모양, 프레임 간 픽셀 흔들림, 팔레트 오염이 생긴다. 에셋당 5~15분 보정 예상 (PixelLab 웹 에디터/Aseprite).
 

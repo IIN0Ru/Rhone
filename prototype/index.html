@@ -107,6 +107,7 @@ button.sel{box-shadow:inset 0 0 0 4px #e2402e;background:#fbe6b8}
   <div id="modal" class="hidden"><div id="modalIn"><div id="mch" class="wood"></div><div class="dlg wood" id="modalBox"></div></div></div>
 </div></div>
 <script src="art9.js"></script>
+<script src="art_pl.js"></script>
 <script src="ui7.js"></script>
 <script>
 // ================= 유틸 =================
@@ -826,6 +827,7 @@ async function strike(a, t, d, ranged, color) {
     projs.splice(projs.indexOf(p), 1);
   } else {
     const dir = t.x > a.x ? 1 : -1;
+    const ak = sprKey(a); if (ak && SPI[ak].atk.length) a.atkT = tnow;
     await tween(a, {x: t.x - dir * 46}, 200);
   }
   t.hp = Math.max(0, t.hp - d);
@@ -1131,8 +1133,8 @@ function drawBubble(o, x, y) {
 }
 const SPI = {};
 for (const k in SPRITES) {
-  const o = SPI[k] = {idle: [], run: [], top: 0, bot: 28};
-  for (const m of ['idle', 'run']) SPRITES[k][m].forEach((src, i) => { const im = new Image(); im.src = src; o[m].push(im);
+  const o = SPI[k] = {idle: [], run: [], atk: [], top: 0, bot: 28};
+  for (const m of ['idle', 'run', 'atk']) (SPRITES[k][m] || []).forEach((src, i) => { const im = new Image(); im.src = src; o[m].push(im);
     if (m === 'idle' && i === 0) im.onload = () => { const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0);
       const d = g.getImageData(0, 0, im.width, im.height).data; let t = im.height, b = 0;
       for (let y = 0; y < im.height; y++) for (let x = 0; x < im.width; x++) if (d[(y * im.width + x) * 4 + 3] > 0) { t = Math.min(t, y); b = Math.max(b, y + 1); }
@@ -1141,8 +1143,12 @@ for (const k in SPRITES) {
 const ENEMY_SPR = {goblin: 'goblin', archer: 'goblin_archer', chief: 'ogre', assassin: 'masked', wolf: 'wolf'};
 function sprKey(u) { if (!u) return null; const k = u.spr || (u.type && ENEMY_SPR[u.type]) || u.id; return k && SPI[k] ? k : null; }
 function sprH(k) { const S = SPI[k]; return (S.bot - S.top) * PX; }
-function sprDraw(k, x, flip, walk, rot, alpha, big) {
-  const S = SPI[k], fr = walk ? S.run : S.idle, im = fr[Math.floor(tnow / (walk ? 100 : 160)) % fr.length];
+const ATK_MS = 50;
+function sprDraw(k, x, flip, walk, rot, alpha, big, atkT) {
+  const S = SPI[k]; let im;
+  const af = atkT != null && S.atk.length ? Math.floor((tnow - atkT) / ATK_MS) : -1;
+  if (af >= 0 && af < S.atk.length) im = S.atk[af];
+  else { const fr = walk && S.run.length ? S.run : S.idle; im = fr[Math.floor(tnow / (walk ? 100 : 160)) % fr.length]; }
   if (!im || !im.complete) return;
   const sc = PX * (big ? 1.5 : 1);
   ctx.save(); ctx.imageSmoothingEnabled = false; ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.translate(Math.round(x), GY);
@@ -1159,7 +1165,7 @@ function drawActor(u, size, opts = {}) {
     const x = X(u.x); if (x < -100 || x > W + 100) return;
     const sz = sprH(k) * (u.big ? 1.5 : 1);
     ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, GY + 2, sz * 0.3, 5, 0, 0, 7); ctx.fill();
-    sprDraw(k, x, u.flip, opts.walk, u.rot, u.alpha, u.big);
+    sprDraw(k, x, u.flip, opts.walk, u.rot, u.alpha, u.big, u.atkT);
     if (u.hurt && tnow < u.hurt) { ctx.fillStyle = 'rgba(255,60,60,.35)'; ctx.beginPath(); ctx.arc(x, GY - sz * 0.5, sz * 0.45, 0, 7); ctx.fill(); }
     if (opts.name) txt(opts.name, x, GY + 20, 12, opts.nameColor || '#efe6d6', 'center', 700);
     if (opts.hp) { const p = clamp(u.hp / opts.max, 0, 1); rr(x - 26, GY - sz - 14, 52, 6, 3, '#15110e'); if (p > 0) rr(x - 26, GY - sz - 14, 52 * p, 6, 3, opts.enemy ? '#d9534f' : '#5fbf5f'); }

@@ -6,6 +6,8 @@
 | 16x16 DungeonTileset II | 0x72 | **CC0** | 캐릭터·몬스터·UI 아이콘 (임시) |
 | 갈무리 (Galmuri11) | quiple | **SIL Open Font License 1.1** | 게임 전체 폰트 — 크레딧 표기 필요, 폰트 단독 판매 금지 |
 
+| 도윤 후보 스프라이트 | PixelLab (AI 생성, 체험판) | PixelLab 약관 — **상업 이용 조건 결제 전 확인 필요** | assets/pixellab/ (시안) |
+
 ## 직접 제작
 - 거리·실내·던전 배경, 늑대 스프라이트, 색 변형 캐릭터: `tools/pixel/` 스크립트로 제작 (프로젝트 소유)
 

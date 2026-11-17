@@ -62,6 +62,16 @@ negative: `front view, top-down, background, ground shadow, text, blurry, anti-a
 - 같은 캐릭터의 모든 프레임은 같은 캔버스 크기
 - 원본은 `assets/`, 게임에 넣는 묶음(base64 JS 등)은 빌드 단계에서 생성
 
+### 클라우드 세션에서 PNG 받는 법 (2026-11-17 확인)
+claude.ai 커넥터(PixelLab)는 연결됨. 하지만 클라우드 작업 공간에서는 `api.pixellab.ai`·`backblaze.pixellab.ai` 다운로드가 **막혀 있다.** 우회:
+1. `pixelart_workbench(["inspect", "character:<id>:east"])` → 결과 이미지가 3배 확대 미리보기 PNG로 `/tmp/claude-tool-results/…`에 저장됨
+2. `python3 tools/pixellab/unpreview.py <미리보기.png> 48 48 <출력.png>` → 원본 픽셀로 정확히 복원 (블록 균일성·색 수 검증 출력)
+- 체험판(Tier 0)은 **동시 생성 1개** → 순서대로 돌릴 것. v3 텍스트 생성은 16~90px에서 2회.
+- 로컬 Claude Code에서는 `export_asset` 링크로 바로 받으면 된다.
+
+### 도윤 1차 후보 (2026-11-17)
+v3 · view side · 48px · east 방향. `assets/pixellab/candidates/` (A: 디테일↑ 48색, B: 중간 54색, C: 플랫·외곽선 강함 38색). 실제 인물 높이 약 45px → 규격 32×40보다 큼. 비교 이미지 `doyun_candidates.png`.
+
 ## 수작업 보정
 AI 결과물은 손 모양, 프레임 간 픽셀 흔들림, 팔레트 오염이 생긴다. 에셋당 5~15분 보정 예상 (PixelLab 웹 에디터/Aseprite).
 

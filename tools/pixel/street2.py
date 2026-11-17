@@ -1,4 +1,5 @@
 """상경 거리 배경 (도트). 가로 1400 x 세로 210, 오른쪽을 향해 걷는 횡스크롤용."""
+from outpath import out
 import random
 from PIL import Image, ImageDraw
 random.seed(7)
@@ -418,6 +419,6 @@ def streetlamp(x):
 for lx in (96, 228, 336, 458, 590, 678, 790):
     streetlamp(lx)
 
-im.save('/home/claude/pix/street2.png')
-import json; json.dump({'anchors': anchors, 'walk_y': WALK_Y, 'w': W, 'h': H}, open('/home/claude/pix/street2.json', 'w'), ensure_ascii=False)
+im.save(out('street2.png'))
+import json; json.dump({'anchors': anchors, 'walk_y': WALK_Y, 'w': W, 'h': H}, open(out('street2.json'), 'w'), ensure_ascii=False)
 print('ok', anchors)

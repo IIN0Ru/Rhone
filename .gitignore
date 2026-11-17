@@ -6,3 +6,4 @@ dist/
 .env
 *.token
 tools/test/*.png
+tools/test/out/

@@ -66,4 +66,4 @@ negative: `front view, top-down, background, ground shadow, text, blurry, anti-a
 AI 결과물은 손 모양, 프레임 간 픽셀 흔들림, 팔레트 오염이 생긴다. 에셋당 5~15분 보정 예상 (PixelLab 웹 에디터/Aseprite).
 
 ## 코드 도트 스크립트 (tools/pixel)
-`pixlib.py`(공통 도형·벽·창문·간판 함수) 위에 `street2.py`(거리), `interiors.py`(여관·마구간), `interiors2.py`(술집·객잔·잡화점·수련장), `dungeon.py`(던전 3층 + 늑대). 출력 경로가 `/home/claude/pix/` 로 하드코딩되어 있으니 쓸 때 바꿀 것. PixelLab 전환 후에는 참고용.
+`pixlib.py`(공통 도형·벽·창문·간판 함수) 위에 `street2.py`(거리), `interiors.py`(여관·마구간), `interiors2.py`(술집·객잔·잡화점·수련장), `dungeon.py`(던전 3층 + 늑대). `tools/pixel/` 안에서 실행하면 `assets/source/`에 저장되고, 다른 곳에 저장하려면 `RHONE_PIX_OUT` 환경변수를 준다(`outpath.py`). 폐기한 도윤 코드 도트 스크립트(char2·char3·heads)는 삭제했다. PixelLab 전환 후에는 참고용.

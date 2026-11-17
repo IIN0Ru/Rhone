@@ -1,3 +1,4 @@
+from outpath import out
 import pixlib as L
 from pixlib import *
 import random, json
@@ -115,7 +116,7 @@ box(375, 40, 12, 16, '#c48a26'); R(377, 42, 8, 12, '#3a2a4a'); P(380, 46, '#f2c1
 # 바닥 그림자 비네트
 for x in range(390):
     for y in range(10, 14): P(x, y, lerp(L.im.getpixel((x, y)), '#000000', .25))
-L.im.save('/home/claude/pix/int_lodge.png')
+L.im.save(out('int_lodge.png'))
 
 # ===================== 마구간 내부 (250 x 150) =====================
 new_canvas(250, 150)
@@ -168,5 +169,5 @@ for k in range(5): P(70 + k, 50 + abs(k - 2), '#8a8a92')
 for x0 in (30, 80, 190):
     for y in range(24, 90, 1):
         P(x0 + y // 10, y, lerp(L.im.getpixel((x0 + y // 10, y)), '#ffcf7a', .35))
-L.im.save('/home/claude/pix/int_stable.png')
+L.im.save(out('int_stable.png'))
 print('ok')

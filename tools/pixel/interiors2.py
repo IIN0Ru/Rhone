@@ -1,3 +1,4 @@
+from outpath import out
 import pixlib as L
 from pixlib import *
 import random
@@ -81,7 +82,7 @@ R(230, FL - 25, 100, 4, '#9a6a3c'); HL(230, FL - 25, 100, '#c48a52'); HL(230, FL
 for k in range(4): mug(244 + k * 18, FL - 25)
 # 큰 맥주통 (탭)
 box(300, FL - 44, 22, 18, '#8a5a32', '#a87444', '#5a3a1e'); VL(305, FL - 43, 16, '#4a4a52'); VL(316, FL - 43, 16, '#4a4a52'); R(296, FL - 37, 5, 2, '#c8c8d0')
-L.im.save('/home/claude/pix/int_tavern.png')
+L.im.save(out('int_tavern.png'))
 
 # ======================= 객잔 (330) =======================
 new_canvas(330, 150)
@@ -127,7 +128,7 @@ for k in range(5): VL(272 + k * 3, FL - 30, 4, '#c8a86a'); P(272 + k * 3, FL - 2
 box(296, FL - 28, 12, 3, '#f2ead6'); HL(297, FL - 27, 9, '#8a7a6a')
 # 계단 (위층 객실)
 for k in range(8): R(300 + k * 3, FL - 30 - k * 8, 30 - k * 3, 3, '#5a3424') if False else None
-L.im.save('/home/claude/pix/int_inn.png')
+L.im.save(out('int_inn.png'))
 
 # ======================= 잡화점 (250) =======================
 new_canvas(250, 150)
@@ -169,7 +170,7 @@ for k in range(4): L.D.ellipse([91 + k * 2, FL - 16, 94 + k * 2, FL - 13], fill=
 crate(104, FL - 10, 10); crate(214, FL - 10, 10); crate(224, FL - 10, 10); crate(219, FL - 20, 9)
 R(46, FL, 60, 3, '#4e6a8a'); HL(46, FL, 60, '#6a8aaa')
 L.window(228, 34, 0, 0, lit=False) if False else None
-L.im.save('/home/claude/pix/int_shop.png')
+L.im.save(out('int_shop.png'))
 
 # ======================= 수련장 (275) =======================
 new_canvas(275, 150)
@@ -209,5 +210,5 @@ for dx_ in (75, 190, 225):
 # 물통·수건
 box(128, FL - 10, 10, 10, '#7a7a82', '#9a9aa2', '#4a4a52'); R(129, FL - 9, 8, 2, '#6a9ab8')
 R(140, 70, 12, 3, '#5a3a22'); R(142, 73, 8, 9, '#f2ead6'); VL(146, 73, 9, '#e2d0b0')
-L.im.save('/home/claude/pix/int_train.png')
+L.im.save(out('int_train.png'))
 print('ok')

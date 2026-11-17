@@ -36,7 +36,7 @@
   python3 tools/test/bot9.py      # 랜덤 플레이 (에러 수 출력)
   python3 tools/test/t9.py        # 던전 전투 스크린샷
   ```
-  (스크립트의 `executable_path='/usr/bin/google-chrome'` 은 환경에 맞게 바꾼다)
+  스크린샷은 `tools/test/out/`에 저장된다. 시스템 크롬을 쓰려면 `CHROME_PATH=/경로/chrome` 환경변수를 준다.
 - 새 버전을 만들면 [docs/DEVLOG.md](docs/DEVLOG.md)에 한 항목 추가하고, 새 결정은 DECISIONS.md에 추가한다.
 - 에셋을 추가하면 [docs/CREDITS.md](docs/CREDITS.md)에 출처·라이선스를 적는다. **라이선스가 불분명한 에셋은 쓰지 않는다.**
 - 커밋 메시지는 한국어 OK. 큰 변경은 브랜치 → PR.

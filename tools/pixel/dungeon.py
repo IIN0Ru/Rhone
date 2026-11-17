@@ -1,3 +1,4 @@
+from outpath import out
 import pixlib as L
 from pixlib import *
 import random, math
@@ -78,7 +79,7 @@ def floor(name, w, seed, base, dark, hi, extra):
     ceiling(w, shade(base, .45), shade(base, .65))
     floor_stone(w)
     extra(w)
-    L.im.save(f'/home/claude/pix/dun_{name}.png')
+    L.im.save(out(f'dun_{name}.png'))
 
 def d1(w):
     for px in (120, 260, 400, 520): pillar(px)
@@ -171,6 +172,6 @@ def wolf_frame(legs, bob):
 idle = [wolf_frame([(3, 0), (6, 0), (15, 0), (18, 0)], b) for b in (0, 0, 1, 1)]
 run = [wolf_frame([(3, -1), (6, 1), (15, 1), (18, -1)], 0), wolf_frame([(3, 0), (6, 0), (15, 0), (18, 0)], 1),
        wolf_frame([(3, 1), (6, -1), (15, -1), (18, 1)], 0), wolf_frame([(3, 0), (6, 0), (15, 0), (18, 0)], 1)]
-for i, f in enumerate(idle): f.save(f'/home/claude/pix/wolf_idle_{i}.png')
-for i, f in enumerate(run): f.save(f'/home/claude/pix/wolf_run_{i}.png')
+for i, f in enumerate(idle): f.save(out(f'wolf_idle_{i}.png'))
+for i, f in enumerate(run): f.save(out(f'wolf_run_{i}.png'))
 print('ok')

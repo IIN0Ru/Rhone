@@ -1,9 +1,9 @@
 import asyncio, random, json
 from playwright.async_api import async_playwright
-URL=''+__import__('pathlib').Path(__file__).resolve().parents[2].joinpath('prototype','index.html').as_uri()+''
+from common import URL, launch_args, shot
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
+        b = await p.chromium.launch(**launch_args())
         pg = await b.new_page(viewport={'width':1000,'height':900})
         errs=[]
         pg.on('console', lambda m: errs.append(m.text) if m.type=='error' else None)

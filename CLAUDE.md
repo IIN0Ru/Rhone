@@ -43,4 +43,4 @@
 
 ## 지금 하던 일 / 다음 할 일
 
-[docs/ROADMAP.md](docs/ROADMAP.md)의 "지금 단계" 참고. 2026-11-17 기준: 도윤(기준·걷기·공격)·유진(기준) 완료, `assets/pixellab/final/`. 다음은 **유진 애니메이션 → 파티원**. 새 캐릭터는 도윤 P3를 `edit_image_pixen`으로 변환하는 방식이 화풍 유지에 가장 좋았다.
+[docs/ROADMAP.md](docs/ROADMAP.md)의 "지금 단계" 참고. 2026-11-17 기준: 도윤·유진(기준·걷기·공격) 완료, `assets/pixellab/final/`. 다음은 **파티원(바르크·연소하·소소·기사) → 몬스터**. 새 캐릭터는 도윤 P3를 `edit_image_pixen`으로 변환하는 방식이 화풍 유지에 가장 좋았다.

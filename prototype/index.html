@@ -205,7 +205,7 @@ const TOASTS = [];
 const log = t => { G.log.unshift(t); if (G.log.length > 80) G.log.pop(); TOASTS.unshift({t, until: performance.now() + 5500}); if (TOASTS.length > 3) TOASTS.pop(); renderLog(); };
 const priceOf = (rate, mo) => Math.round(rate * mo * (mo === 1 ? 1 : mo === 3 ? 0.9 : 0.8));
 const NAMEKEY = {'유진': 'yujin', '바르크': 'bark', '연소하': 'yeon', '소소': 'soso', '저주받은 기사': 'knight', '???': 'knight', '거지 노인': 'oldman'};
-const porKey = u => (u && u.id && SPRITES[u.id] ? u.id : (u && u.spr) || NAMEKEY[u && u.name] || '');
+const porKey = u => (u && u.spr && SPRITES[u.spr] ? u.spr : u && u.id && SPRITES[u.id] ? u.id : (u && u.spr) || NAMEKEY[u && u.name] || '');
 const talkHtml = (u, line) => `<div class="talk" data-por="${porKey(u)}" data-nm="${esc(u.name)}"><div class="talkline">${line}</div></div>`;
 const EMO_RE = /(\p{Extended_Pictographic}|\u200d|\ufe0f|\u20e3)+\s?/gu;
 const noEmo = h => String(h).replace(EMO_RE, '');
@@ -820,14 +820,16 @@ function obey(m) {
 }
 async function strike(a, t, d, ranged, color) {
   const ox = a.x;
+  const ak = sprKey(a), hasAtk = ak && SPI[ak].atk.length;
+  if (hasAtk) a.atkT = tnow;
   if (ranged) {
-    const p = {x: a.x + (t.x > a.x ? 20 : -20), y: GY - 30, to: t.x};
+    if (hasAtk) await sleep(G.fast ? 120 : 260);
+    const p = {x: a.x + (t.x > a.x ? 20 : -20), y: GY - 30, to: t.x, mag: a.ranged === '마법사'};
     projs.push(p);
     await tween(p, {x: t.x}, 260);
     projs.splice(projs.indexOf(p), 1);
   } else {
     const dir = t.x > a.x ? 1 : -1;
-    const ak = sprKey(a); if (ak && SPI[ak].atk.length) a.atkT = tnow;
     await tween(a, {x: t.x - dir * 46}, 200);
   }
   t.hp = Math.max(0, t.hp - d);
@@ -839,7 +841,7 @@ async function strike(a, t, d, ranged, color) {
 async function hit(u, e, line) {
   const d = dmg(atkOf(u), e.def);
   if (line) bubble(u, line, 900);
-  await strike(u, e, d, u.id === 'player' && u.job === '궁수', u.id === 'player' ? '#ffd24a' : '#ffe9a8');
+  await strike(u, e, d, (u.id === 'player' && u.job === '궁수') || !!u.ranged, u.id === 'player' ? '#ffd24a' : '#ffe9a8');
   log(`${u.icon} ${u.name} → ${e.name} ${d} 피해`);
   if (e.hp <= 0) {
     e.state = 'dead'; bubble(e, '끄엑…', 700);
@@ -1214,7 +1216,7 @@ function draw() {
     drawActor(G.player, 44, {name: G.player.name, nameColor: '#f2c46d', walk: G.player.moving, hp: !!B, max: maxHp(G.player)});
     drawBubble(G.player, X(G.player.x), headY(G.player, GY - 74));
   }
-  for (const p of projs) { ctx.strokeStyle = '#f2e6c8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(p.x) - 14, p.y); ctx.lineTo(X(p.x) + 14, p.y); ctx.stroke(); emoji('✨', X(p.x) + 14, p.y + 8, 14); }
+  for (const p of projs) { if (p.mag) { ctx.fillStyle = 'rgba(92,205,228,.35)'; ctx.beginPath(); ctx.arc(X(p.x), p.y, 12, 0, 7); ctx.fill(); ctx.fillStyle = '#90ebd1'; ctx.beginPath(); ctx.arc(X(p.x), p.y, 6, 0, 7); ctx.fill(); continue; } ctx.strokeStyle = '#f2e6c8'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(X(p.x) - 14, p.y); ctx.lineTo(X(p.x) + 14, p.y); ctx.stroke(); emoji('✨', X(p.x) + 14, p.y + 8, 14); }
   for (const p of popups) { ctx.globalAlpha = 1 - p.t; txt(p.text, X(p.x), p.y - p.t * 40, 20, p.color, 'center', 700); ctx.globalAlpha = 1; }
   // 상호작용 안내
   if (!G.battle && !G.lock && !modalOpen && G.phase === 'world') {
@@ -1369,7 +1371,9 @@ const ACT = {
       bdef: Wr ? 4 : 2, defg: Wr ? 0.5 : 0.3, bHp: 0, bAtk: 0, bDef: 0, hp: 0, traits: [], x: 560, rot: 0, alpha: 1, flip: false,
       lines: {atk: ['간다!', '받아라!']}};
     G.player.hp = maxHp(G.player);
-    G.party = [newMember('yujin')];
+    const yj = newMember('yujin'), yJob = G.introJob === '궁수' ? '마법사' : '궁수';
+    yj.job = yJob; yj.ranged = yJob; yj.spr = yJob === '궁수' ? 'yujinarcher' : 'yujinmage';
+    G.party = [yj];
     G.phase = 'world';
     goScene('town', 420);
     spawnCoins();

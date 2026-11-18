@@ -223,12 +223,34 @@ function portrait(k) {
   return (PORT[k] = o.toDataURL());
 }
 const isDungeon = () => !!FLOORS[G.scene];
+// ── 대열 (2026-11-18) ── 앞줄 = 앞쪽 절반. 탱커·전사는 앞줄, 궁수·마법사는 뒷줄이 맞는 자리.
+const DEF_POS = {bark: '탱커', yeon: '전사', soso: '궁수', knight: '탱커'};
+const ROLE_ORDER = {'탱커': 0, '전사': 1, '궁수': 2, '마법사': 3};
+const posOf = u => u.id === 'player' ? u.job : (u.pos || DEF_POS[u.id] || u.ranged || '전사');
+const frontRole = r => r === '탱커' || r === '전사';
+function formation() {
+  const all = [G.player, ...G.party];
+  for (const u of all) if (u.slot == null) u.slot = ROLE_ORDER[posOf(u)] * 10 + all.indexOf(u);
+  return all.sort((a, b) => a.slot - b.slot);
+}
+const frontN = () => Math.ceil((1 + G.party.length) / 2);
+const isFront = u => formation().indexOf(u) < frontN();
+const misfit = u => frontRole(posOf(u)) !== isFront(u);
+// 어색한 자리 벌칙: 같은 어색한 자리로 싸울수록 익숙해져 줄어든다 (임시 수치 — NPC 특성창 기획 때 확정)
+const famOf = u => (u.posFam || {})[isFront(u) ? 'front' : 'back'] || 0;
+const misfitPen = u => (u.id !== 'player' && misfit(u)) ? Math.max(0, 0.2 - famOf(u) * 0.04) : 0;
+function moveSlot(id, d) {
+  const f = formation(), i = f.findIndex(u => u.id === id), j = i + d;
+  if (i < 0 || j < 0 || j >= f.length) return;
+  [f[i], f[j]] = [f[j], f[i]]; f.forEach((u, k) => u.slot = k);
+}
 
 function newMember(id) {
   const t = TEMPLATES[id];
   const m = {id, name: t.name, icon: t.icon, job: t.job, lvl: t.lvl, bhp: t.bhp, batk: t.batk, bdef: t.bdef,
     hpg: 5, atkg: 1.2, defg: 0.4, bHp: 0, bAtk: 0, bDef: 0, aff: t.aff, lines: t.lines,
     traits: t.traits.map(([n, d, s]) => ({n, d, shown: !!s})), contract: Infinity, hp: 0, x: G.player ? G.player.x - 60 : 0, rot: 0, alpha: 1, flip: false};
+  if (id === 'soso') m.ranged = '궁수';
   m.hp = maxHp(m);
   return m;
 }
@@ -422,11 +444,15 @@ function renderMenu() {
   let body = '';
   if (menuTab === 'party') {
     const busy = G.lock || !!G.battle;
-    body = `<h2>파티 · ${1 + G.party.length} / 4</h2>` + [G.player, ...G.party].map(u => {
+    const fo = formation(), fn = frontN();
+    body = `<h2>파티 · ${1 + G.party.length} / 4</h2><div style="font-size:15px;opacity:.85;margin-bottom:6px">대열: 위가 맨 앞. 앞줄 ${fn}명이 적의 공격을 더 많이 받는다. 탱커·전사는 앞줄, 궁수·마법사는 뒷줄이 맞는 자리.</div>` + fo.map((u, idx) => {
       const me = u.id === 'player', mh = maxHp(u);
+      const row = idx < fn ? `앞줄 ${idx + 1}` : `뒷줄 ${idx - fn + 1}`, bad = !me && misfit(u), pen = misfitPen(u);
+      const formHtml = `<div style="font-size:15px;margin-top:2px"><b>${row}</b> · ${esc(posOf(u))} ${me ? '' : bad ? (pen > 0 ? `<span style="color:#b3412a">⚠ 어색한 자리 (사고↑ · 익숙함 ${famOf(u)}/5)</span>` : '<span style="color:#4f7a2a">어색한 자리지만 익숙해졌다</span>') : '<span style="color:#4f7a2a">✔ 맞는 자리</span>'}</div>`;
+      const arrows = busy ? '' : `<div style="display:flex;flex-direction:column;gap:4px;margin-right:8px"><button data-act="form" data-arg="${u.id}:-1" ${idx === 0 ? 'disabled' : ''} style="font-size:14px;padding:2px 8px">▲</button><button data-act="form" data-arg="${u.id}:1" ${idx === fo.length - 1 ? 'disabled' : ''} style="font-size:14px;padding:2px 8px">▼</button></div>`;
       const contract = me ? '주인공' : u.contract === Infinity ? (u.id === 'yujin' ? '고향 친구 · 계약 없음' : '계약 없음') : `계약 ${u.contract}일 남음`;
-      return `<div class="row paper"><img class="p" src="${portrait(u.id)}"><div style="flex:1;min-width:0"><div style="font-size:22px">${esc(u.name)} <span style="font-size:16px">Lv.${u.lvl} ${esc(u.job)}</span></div>
-        <div style="font-size:16px">HP ${u.hp} / ${mh} · ${contract}</div>${chips(u)}</div>
+      return `<div class="row paper">${arrows}<img class="p" src="${portrait(porKey(u))}"><div style="flex:1;min-width:0"><div style="font-size:22px">${esc(u.name)} <span style="font-size:16px">Lv.${u.lvl} ${esc(u.job)}</span></div>
+        <div style="font-size:16px">HP ${u.hp} / ${mh} · ${contract}</div>${formHtml}${chips(u)}</div>
         <div style="text-align:right;min-width:150px">${me ? '' : `<div class="hearts">${heartsOf(u.aff / 100, 5)}</div><div style="font-size:15px">${affWord(u.aff)} (${u.aff})</div>`}
         ${me || busy ? '' : `<button data-act="dismiss" data-arg="${u.id}" style="font-size:15px;padding:4px 10px;margin-top:6px">보내기</button>`}</div></div>`;
     }).join('') + (G.party.length < 3 ? `<div class="row paper dim" style="justify-content:center;font-size:17px">빈자리 ${3 - G.party.length} — 술집·객잔·뒷골목·던전에서 동료를 찾을 수 있다</div>` : '')
@@ -795,7 +821,9 @@ async function startBattle(enc) {
   if (enc.ambush) reveal(getU('yeon'), '원수');
   const P = G.player, baseX = enc.x - 120;
   P.flip = false;
-  await Promise.all([tween(P, {x: baseX}, 300), ...G.party.map((m, i) => { m.flip = false; return tween(m, {x: baseX - 80 * (i + 1)}, 360); })]);
+  await Promise.all(formation().map((u, i) => { u.flip = false; return tween(u, {x: baseX - 80 * i}, 300 + i * 30); }));
+  const odd = G.party.find(m => misfitPen(m) > 0);
+  if (odd) bubble(odd, isFront(odd) ? '내가 왜 앞에…?' : '뒤에서 뭘 하라는 거야?', 1300);
   bubble(B.enemies[0], enc.ambush ? '연소하, 목을 내놓아라!' : B.enemies[0].type === 'chief' ? '크하하! 먹잇감이 왔구나!' : B.enemies[0].type === 'wolf' ? '크르르릉…' : '끼에엑!', 1600);
   const brave = G.party.find(m => m.aff > 50);
   if (brave) bubble(brave, pick(brave.lines.atk), 1400);
@@ -816,6 +844,7 @@ function obey(m) {
   if (m.id === 'bark') p += 0.25;
   if (m.id === 'knight') p += 0.1;
   if (m.id === 'yeon' && G.player.lvl < m.lvl - 2) p -= 0.15;
+  p -= misfitPen(m);
   return clamp(p, 0.1, 0.97);
 }
 async function strike(a, t, d, ranged, color) {
@@ -884,7 +913,7 @@ async function allyAct(id) {
     log('🍺 바르크가 비틀거리다 헛손질했다.'); return;
   }
   if (R() < obey(u)) { const e = pickTarget(); if (e) await hit(u, e, pick(u.lines.atk)); return; }
-  if (u.aff < 30 && R() < 0.45) {
+  if (u.aff < (misfitPen(u) > 0 ? 40 : 30) && R() < 0.45) {
     B.out[id] = 'fled'; u.aff = clamp(u.aff - 5, 0, 100);
     bubble(u, pick(u.lines.flee), 1400); u.flip = true;
     await tween(u, {x: u.x - 420, alpha: 0.25}, 600);
@@ -923,7 +952,9 @@ async function doTurn(cmd) {
       if (e.state !== 'ok') continue;
       const tg = B.allies.filter(inB);
       if (!tg.length) break;
-      const tid = pick(tg), t = getU(tid), d = dmg(e.atk, defOf(t));
+      const fo = formation().map(u => u.id).filter(x => tg.includes(x)), wts = fo.map((x, k) => e.ranged ? 1 : [3, 2, 1, 1][k] || 1);
+      let rr = R() * wts.reduce((a, b) => a + b, 0), tid = fo[0]; for (let k = 0; k < fo.length; k++) { rr -= wts[k]; if (rr <= 0) { tid = fo[k]; break; } }
+      const t = getU(tid), d = dmg(e.atk, defOf(t));
       await strike(e, t, d, !!e.ranged, '#ff7a7a');
       log(`${e.icon} ${e.name} → ${t.name} ${d} 피해`);
       if (t.hp <= 0) {
@@ -945,6 +976,7 @@ async function finishBattle(res) {
   if (res === 'dead') return faint();
   const loot = B.enemies.filter(e => e.state === 'dead').reduce((s, e) => s + e.loot, 0);
   G.run.loot += loot;
+  for (const m of G.party) if (inB(m.id) && misfit(m)) { const k = isFront(m) ? 'front' : 'back'; m.posFam = {...(m.posFam || {}), [k]: famOf(m) + 1}; if (famOf(m) === 5) log(`📐 ${j(m.name, '이', '가')} ${k === 'front' ? '앞줄' : '뒷줄'}에 완전히 익숙해졌다.`); }
   if (B.enc.ambush) G.run.ambush = false; else G.run.cleared[G.scene].push(B.enc.i);
   popup(G.player.x, GY - 110, `+${loot}G`, '#ffd24a');
   log(`🏆 승리! 전리품 ${loot}G${B.escaped ? ` (놓친 적 ${B.escaped})` : ''}`);
@@ -1364,6 +1396,7 @@ function runAct(fn, arg) {
 }
 const ACT = {
   job(a) { G.introJob = a; },
+  form(a) { const [id, d] = a.split(':'); moveSlot(id, +d); },
   async start() {
     const name = (G.introName || '').trim() || '도윤';
     const Wr = G.introJob === '전사';

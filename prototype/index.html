@@ -473,8 +473,8 @@ function renderCmd() {
   if (G.phase !== 'world' || !(G.battle || (isDungeon() && G.run))) { el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
   const d = G.lock || modalOpen ? 'disabled' : '';
-  const fast = `<label><input type="checkbox" ${G.fast ? 'checked' : ''} onchange="G.fast=this.checked">빠르게</label>`;
-  if (G.battle) el.innerHTML = `<button class="big" data-act="cmd" data-arg="attack" ${d}>공격 [Space]</button><span>턴 ${G.battle.turn}</span>${fast}`;
+  const fast = `<label><input type="checkbox" ${G.fast ? 'checked' : ''} onchange="G.fast=this.checked">2배속</label>`;
+  if (G.battle) el.innerHTML = `<span>⚔️ 자동 전투 중</span>${fast}`;
   else el.innerHTML = `<span>${esc(SC[G.scene].name)} · 자동 전진 중</span>${fast}`;
 }
 function renderScreen() {
@@ -805,9 +805,9 @@ async function endRun() {
 }
 
 // ================= 전투 (필드 연출) =================
-const sp = ms => sleep(ms * (G.fast ? 0.4 : 1));
+const sp = ms => sleep(ms * (G.fast ? 0.5 : 1));
 function tween(o, props, ms) {
-  return new Promise(res => { const from = {}; for (const k in props) from[k] = o[k]; tweens.push({o, from, to: props, t: 0, ms: Math.max(1, ms * (G.fast ? 0.4 : 1)), res}); });
+  return new Promise(res => { const from = {}; for (const k in props) from[k] = o[k]; tweens.push({o, from, to: props, t: 0, ms: Math.max(1, ms * (G.fast ? 0.5 : 1)), res}); });
 }
 function bubble(o, text, ms = 1500) { if (o && text) { o.bubble = text; o.bubbleUntil = tnow + ms; } }
 function popup(x, y, text, color) { popups.push({x, y, text, color, t: 0}); }
@@ -829,8 +829,8 @@ async function startBattle(enc) {
   if (brave) bubble(brave, pick(brave.lines.atk), 1400);
   const scared = G.party.find(m => m.aff < 35);
   if (scared) bubble(scared, pick(scared.lines.hesit), 1600);
-  G.lock = false;
-  renderUI();
+  await sp(700);
+  autoBattle().catch(err => { console.error(err); log('⚠️ 오류: ' + err.message); }).finally(() => { G.lock = false; renderUI(); });
 }
 function pickTarget() {
   const B = G.battle;
@@ -852,7 +852,7 @@ async function strike(a, t, d, ranged, color) {
   const ak = sprKey(a), hasAtk = ak && SPI[ak].atk.length;
   if (hasAtk) a.atkT = tnow;
   if (ranged) {
-    if (hasAtk) await sleep(G.fast ? 120 : 260);
+    if (hasAtk) await sleep(G.fast ? 130 : 260);
     const p = {x: a.x + (t.x > a.x ? 20 : -20), y: GY - 30, to: t.x, mag: a.ranged === '마법사'};
     projs.push(p);
     await tween(p, {x: t.x}, 260);
@@ -880,9 +880,17 @@ async function hit(u, e, line) {
     e.state = 'fleeing'; e.fleeTurn = G.battle.turn; e.flip = false;
     bubble(e, '끼에엑! 튀어!', 1400);
     await tween(e, {x: e.x + 110}, 320);
-    log(`💨 ${j(e.name, '이', '가')} 도망치기 시작했다! 다음 턴이 끝나기 전에 잡지 못하면 놓친다.`);
+    log(`💨 ${j(e.name, '이', '가')} 도망치기 시작했다! 다시 움직이기 전에 잡지 못하면 놓친다.`);
   }
   await sp(120);
+}
+// 전투 중 사고 개입: 전투당 최대 1번만 멈추고 선택지를 준다 (2026-11-17 결정)
+async function incident(u, line, opts) {
+  const B = G.battle;
+  if (!B || B.intervened) return null;
+  B.intervened = true;
+  if (G.gold >= 10) opts.push({label: '💰 금화로 달랜다 (-10G)', value: 'gold', cls: 'ghost'});
+  return await modal(talkHtml(u, line), opts);
 }
 async function allyAct(id) {
   const B = G.battle, u = getU(id);
@@ -891,8 +899,11 @@ async function allyAct(id) {
     reveal(u, '저주');
     const others = B.allies.filter(x => x !== 'knight' && inB(x));
     if (others.length) {
-      const tid = pick(others), t = getU(tid), d = dmg(atkOf(u), defOf(t));
       bubble(u, '크아아아아!', 1300); shake = 0.4;
+      const c = await incident(u, '……크으… 저주가… (기사의 눈이 붉게 변했다. 아군을 노린다!)', [{label: '🛡️ 몸으로 막는다 (내가 대신 맞는다)', value: 'block'}, {label: '내버려둔다', value: 'let', cls: 'ghost'}]);
+      if (c === 'gold') { G.gold -= 10; u.aff = clamp(u.aff + 1, 0, 100); bubble(u, '……금빛……', 1200); log('💰 금화를 던져 기사의 폭주를 달랬다. (-10G)'); renderUI(); return; }
+      if (c === 'block') { u.aff = clamp(u.aff + 3, 0, 100); log('🛡️ 기사의 폭주를 몸으로 막았다. (기사 호감도 +3)'); }
+      const tid = c === 'block' ? 'player' : pick(others), t = getU(tid), d = dmg(atkOf(u), defOf(t));
       await sp(350);
       await strike(u, t, d, false, '#ff5a5a');
       log(`😈 저주가 폭주했다! 기사가 ${t.name}에게 ${d} 피해`);
@@ -914,6 +925,10 @@ async function allyAct(id) {
   }
   if (R() < obey(u)) { const e = pickTarget(); if (e) await hit(u, e, pick(u.lines.atk)); return; }
   if (u.aff < (misfitPen(u) > 0 ? 40 : 30) && R() < 0.45) {
+    bubble(u, pick(u.lines.flee), 1200);
+    const c = await incident(u, pick(u.lines.flee) + ` (${j(u.name, '이', '가')} 겁에 질려 도망치려 한다!)`, [{label: '✋ 붙잡는다 (호감도 -2)', value: 'hold'}, {label: '보내준다', value: 'let', cls: 'ghost'}]);
+    if (c === 'hold') { u.aff = clamp(u.aff - 2, 0, 100); bubble(u, '노, 놔요…!', 1200); log(`✋ ${j(u.name, '을', '를')} 붙잡았다. 이번엔 싸우지 못했다. (호감도 -2)`); return; }
+    if (c === 'gold') { G.gold -= 10; u.aff = clamp(u.aff + 2, 0, 100); bubble(u, '…이번만이에요', 1200); log(`💰 금화로 ${j(u.name, '을', '를')} 달랬다. (-10G, 호감도 +2)`); renderUI(); const e = pickTarget(); if (e) await hit(u, e, null); return; }
     B.out[id] = 'fled'; u.aff = clamp(u.aff - 5, 0, 100);
     bubble(u, pick(u.lines.flee), 1400); u.flip = true;
     await tween(u, {x: u.x - 420, alpha: 0.25}, 600);
@@ -928,47 +943,47 @@ async function allyAct(id) {
   u.x = ox;
 }
 const overB = () => G.battle.enemies.every(e => e.state === 'dead' || e.state === 'escaped');
-async function doTurn(cmd) {
+// ── 자동 전투 (2026-11-18): 각자 속도(포지션·적 종류)에 따라 순서대로 알아서 행동. 버튼 없음 ──
+const SPD = {'탱커': 0.8, '전사': 1, '궁수': 0.9, '마법사': 0.75};
+const ESPD = {goblin: 1.05, archer: 0.85, wolf: 1.25, assassin: 1.1, chief: 0.7};
+async function enemyAct(e) {
   const B = G.battle;
-  {
-    for (const id of B.allies) {
-      if (overB()) break;
-      if (!inB(id)) continue;
-      await allyAct(id);
-      if (G.player.hp <= 0) { await tween(G.player, {rot: -1.57}, 300); return finishBattle('dead'); }
-    }
+  if (e.state === 'fleeing') {
+    e.state = 'escaped'; B.escaped++; bubble(e, '메롱!', 900);
+    await tween(e, {x: e.x + 520, alpha: 0}, 520);
+    log(`💨 ${j(e.name, '을', '를')} 놓쳤다.`); return;
   }
-  if (!overB()) {
-    for (const e of B.enemies) {
-      if (e.state === 'fleeing' && e.fleeTurn < B.turn) {
-        e.state = 'escaped'; B.escaped++; bubble(e, '메롱!', 900);
-        await tween(e, {x: e.x + 520, alpha: 0}, 520);
-        log(`💨 ${j(e.name, '을', '를')} 놓쳤다.`);
-      }
-    }
+  const tg = B.allies.filter(inB);
+  if (!tg.length) return;
+  const fo = formation().map(u => u.id).filter(x => tg.includes(x)), wts = fo.map((x, k) => e.ranged ? 1 : [3, 2, 1, 1][k] || 1);
+  let rr = R() * wts.reduce((a, b) => a + b, 0), tid = fo[0]; for (let k = 0; k < fo.length; k++) { rr -= wts[k]; if (rr <= 0) { tid = fo[k]; break; } }
+  const t = getU(tid), d = dmg(e.atk, defOf(t));
+  await strike(e, t, d, !!e.ranged, '#ff7a7a');
+  log(`${e.icon} ${e.name} → ${t.name} ${d} 피해`);
+  if (t.hp <= 0) {
+    if (tid === 'player') { bubble(t, '여기까지인가…', 1500); await tween(t, {rot: -1.57}, 300); return 'dead'; }
+    B.out[tid] = 'down'; bubble(t, '으윽…', 1200);
+    await tween(t, {rot: -1.57}, 300);
+    log(`💫 ${j(t.name, '이', '가')} 쓰러졌다.`);
   }
-  if (!overB()) {
-    for (const e of B.enemies) {
-      if (e.state !== 'ok') continue;
-      const tg = B.allies.filter(inB);
-      if (!tg.length) break;
-      const fo = formation().map(u => u.id).filter(x => tg.includes(x)), wts = fo.map((x, k) => e.ranged ? 1 : [3, 2, 1, 1][k] || 1);
-      let rr = R() * wts.reduce((a, b) => a + b, 0), tid = fo[0]; for (let k = 0; k < fo.length; k++) { rr -= wts[k]; if (rr <= 0) { tid = fo[k]; break; } }
-      const t = getU(tid), d = dmg(e.atk, defOf(t));
-      await strike(e, t, d, !!e.ranged, '#ff7a7a');
-      log(`${e.icon} ${e.name} → ${t.name} ${d} 피해`);
-      if (t.hp <= 0) {
-        if (tid === 'player') { bubble(t, '여기까지인가…', 1500); await tween(t, {rot: -1.57}, 300); return finishBattle('dead'); }
-        B.out[tid] = 'down'; bubble(t, '으윽…', 1200);
-        await tween(t, {rot: -1.57}, 300);
-        log(`💫 ${j(t.name, '이', '가')} 쓰러졌다.`);
-      }
-      await sp(100);
-    }
+}
+async function autoBattle() {
+  const B = G.battle; if (!B) return;
+  G.lock = true; renderUI();
+  const units = () => [...B.allies.filter(inB).map(id => ({a: id, u: getU(id)})), ...B.enemies.filter(e => e.state === 'ok' || e.state === 'fleeing').map(e => ({e, u: e}))];
+  for (const x of units()) x.u.nextT = R() * 0.6;
+  while (G.battle === B && G.phase === 'world') {
+    if (overB()) return finishBattle('win');
+    const us = units(); if (!us.length) return;
+    us.sort((p, q) => (p.u.nextT || 0) - (q.u.nextT || 0));
+    const x = us[0], now = x.u.nextT || 0;
+    const spd = x.a ? (x.a === 'player' ? 1 : SPD[posOf(x.u)] || 1) : (ESPD[x.e.type] || 1);
+    x.u.nextT = now + (0.8 + R() * 0.4) / spd;
+    if (x.a) { await allyAct(x.a); if (G.player.hp <= 0) { await tween(G.player, {rot: -1.57}, 300); return finishBattle('dead'); } }
+    else if (await enemyAct(x.e) === 'dead') return finishBattle('dead');
+    B.turn++; renderUI();
+    await sp(160);
   }
-  if (overB()) return finishBattle('win');
-  B.turn++;
-  renderUI();
 }
 async function finishBattle(res) {
   const B = G.battle;
@@ -1199,7 +1214,8 @@ function drawActor(u, size, opts = {}) {
     const x = X(u.x); if (x < -100 || x > W + 100) return;
     const sz = sprH(k) * (u.big ? 1.5 : 1);
     ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, GY + 2, sz * 0.3, 5, 0, 0, 7); ctx.fill();
-    sprDraw(k, x, u.flip, opts.walk, u.rot, u.alpha, u.big, u.atkT);
+    const sway = G.battle && !u.rot ? Math.sin(tnow / 420 + (u.swayP ??= R() * 6.3)) * 4 * (u.flip ? -1 : 1) : 0;
+    sprDraw(k, x + sway, u.flip, opts.walk, u.rot, u.alpha, u.big, u.atkT);
     if (u.hurt && tnow < u.hurt) { ctx.fillStyle = 'rgba(255,60,60,.35)'; ctx.beginPath(); ctx.arc(x, GY - sz * 0.5, sz * 0.45, 0, 7); ctx.fill(); }
     if (opts.name) txt(opts.name, x, GY + 20, 12, opts.nameColor || '#efe6d6', 'center', 700);
     if (opts.hp) { const p = clamp(u.hp / opts.max, 0, 1); rr(x - 26, GY - sz - 14, 52, 6, 3, '#15110e'); if (p > 0) rr(x - 26, GY - sz - 14, 52 * p, 6, 3, opts.enemy ? '#d9534f' : '#5fbf5f'); }
@@ -1420,7 +1436,7 @@ const ACT = {
     log('🧭 술집·객잔·뒷골목에서 동료를 고용할 수 있다. 던전은 성문 밖 동쪽 끝에 있다.');
     bubble(getU('yujin'), '여관이랑 마구간, 둘 다 구경해 보자!', 2800);
   },
-  async cmd(c) { if (G.battle) await doTurn(c); },
+  async cmd(c) {},
   menu() {},
   async dismiss(id) {
     const m = getU(id); if (!m) return;

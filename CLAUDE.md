@@ -1,6 +1,6 @@
 # CLAUDE.md — 로운(Rhone) 작업 지침
 
-이 저장소에서 일하는 AI 세션은 **이 파일 → docs/DECISIONS.md → docs/DEVLOG.md 마지막 항목** 순서로 읽고 시작한다.
+이 저장소에서 일하는 AI 세션은 **이 파일 → docs/DEMO_SPEC.md → docs/DECISIONS.md → docs/DEVLOG.md 마지막 항목** 순서로 읽고 시작한다. 데모 제작은 `docs/DEMO_SPEC.md`, 그림 생성은 `docs/ART_SPEC.md`가 기준이다.
 
 ## 사용자와 일하는 방식
 
